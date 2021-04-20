@@ -1,0 +1,35 @@
+{
+	"version": "2.0.0",
+	"tasks": [
+		{
+			"type": "shell",
+			"label": "C/C++: g++.exe build active file",
+			"command": "D:\\MSYS2 64bit\\mingw64\\bin\\g++.exe",
+			"args": [
+				"-g2", // optimization option
+				"-O3", // optimization option
+				"-DNDEBUG",
+				"${file}", //file to compile
+				"-o", //output file
+				"${fileDirname}\\${fileBasenameNoExtension}.exe", //output filename
+				"-D_WIN32_WINNT=_WIN32_WINNT_WIN10", //option optimized for windows 10
+				"-pthread", //same as msys2
+				"-L${workspaceFolder}\\lib", //library directory
+				"-l:libcryptopp.a", //library file
+				"-I${workspaceFolder}\\include", // use this for ease of #include
+				"-Wall",
+			],
+			"options": {
+				"cwd": "D:\\MSYS2 64bit\\mingw64\\bin"
+			},
+			"problemMatcher": [
+				"$gcc"
+			],
+			"group": {
+				"kind": "build",
+				"isDefault": true
+			},
+			"detail": "compiler: \"D:\\MSYS2 64bit\\mingw64\\bin\\g++.exe\""
+		}
+	]
+}
