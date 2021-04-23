@@ -19,6 +19,9 @@ using std::wstring;
 #include <string>
 using std::string;
 
+#include <codecvt>
+#include <locale>
+
 #include <cstdlib>
 using std::exit;
 
@@ -48,6 +51,24 @@ using CryptoPP::OFB_Mode;
 #include "cryptopp/secblock.h"
 using CryptoPP::SecByteBlock;
 
+#define N_ITER 10000
+
+// Referece:
+//https://stackoverflow.com/questions/4804298/how-to-convert-wstring-into-string
+wstring s2ws(const std::string &str)
+{
+	using convert_type = std::codecvt_utf8<wchar_t>;
+	std::wstring_convert<convert_type, wchar_t> converter;
+	return converter.from_bytes(str);
+}
+
+string ws2s(const std::wstring &wstr)
+{
+	using convert_type = std::codecvt_utf8<wchar_t>;
+	std::wstring_convert<convert_type, wchar_t> converter;
+	return converter.to_bytes(wstr);
+}
+
 void PrettyPrint(SecByteBlock byte_block)
 {
 	// Convert bytes from byte_block to a hex string,
@@ -56,7 +77,8 @@ void PrettyPrint(SecByteBlock byte_block)
 	StringSource(byte_block, byte_block.size(), true,
 				 new HexEncoder(
 					 new StringSink(encoded_string)));
-	cout << encoded_string << endl;
+	wstring wstr = s2ws(encoded_string);
+	wcout << wstr << endl;
 }
 
 void PrettyPrint(CryptoPP::byte *bytes_array)
@@ -67,7 +89,8 @@ void PrettyPrint(CryptoPP::byte *bytes_array)
 	StringSource(bytes_array, sizeof(bytes_array), true,
 				 new HexEncoder(
 					 new StringSink(encoded_string)));
-	cout << encoded_string << endl;
+	wstring wstr = s2ws(encoded_string);
+	wcout << wstr << endl;
 }
 
 void PrettyPrint(string str)
@@ -78,7 +101,8 @@ void PrettyPrint(string str)
 	StringSource(str, true,
 				 new HexEncoder(
 					 new StringSink(encoded_string)));
-	cout << encoded_string << endl;
+	wstring wstr = s2ws(encoded_string);
+	wcout << wstr << endl;
 }
 
 // a template for encryption of various modes of operation
@@ -189,7 +213,7 @@ void DES_CBC()
 }
 
 template <class Encryption, class Decryption>
-double DES_nonIV(AutoSeededRandomPool &prng, SecByteBlock &key, string plaintext, string &ciphertext)
+double DES_nonIV(AutoSeededRandomPool &prng, SecByteBlock &key, string plaintext, string &ciphertext, string &recovered)
 {
 	// clock() return the current clock tick of the processor
 	int start = clock();
@@ -209,7 +233,7 @@ double DES_nonIV(AutoSeededRandomPool &prng, SecByteBlock &key, string plaintext
 	// Attach the key to the Encryption object
 	d.SetKey(key, key.size());
 	// Perform decryption
-	Decrypt<Decryption>(ciphertext, d, plaintext);
+	Decrypt<Decryption>(ciphertext, d, recovered);
 
 	// Get ending clock tick
 	int end = clock();
@@ -219,7 +243,7 @@ double DES_nonIV(AutoSeededRandomPool &prng, SecByteBlock &key, string plaintext
 }
 
 template <class Encryption, class Decryption>
-double DES_IV(AutoSeededRandomPool &prng, SecByteBlock &key, CryptoPP::byte iv[], string plaintext, string &ciphertext)
+double DES_IV(AutoSeededRandomPool &prng, SecByteBlock &key, CryptoPP::byte iv[], string plaintext, string &ciphertext, string &recovered)
 {
 	// clock() return the current clock tick of the processor
 	int start = clock();
@@ -242,7 +266,7 @@ double DES_IV(AutoSeededRandomPool &prng, SecByteBlock &key, CryptoPP::byte iv[]
 	// Attach the key to the Encryption object
 	d.SetKeyWithIV(key, key.size(), iv);
 	// Perform decryption
-	Decrypt<Decryption>(ciphertext, d, plaintext);
+	Decrypt<Decryption>(ciphertext, d, recovered);
 
 	// Get ending clock tick
 	int end = clock();
@@ -251,15 +275,29 @@ double DES_IV(AutoSeededRandomPool &prng, SecByteBlock &key, CryptoPP::byte iv[]
 	return double(end - start) / CLOCKS_PER_SEC * 1000;
 }
 
-double LoopingIV(AutoSeededRandomPool &prng, SecByteBlock &key, CryptoPP::byte iv[], string plaintext, string &ciphertext)
+template <class Encryption, class Decryption>
+double LoopingIV(AutoSeededRandomPool &prng, SecByteBlock &key, CryptoPP::byte iv[], string plaintext, string &ciphertext, string &recovered)
 {
 	double sum = 0;
 	int time;
 
-	for (int i = 0; i < 10000; ++i)
+	for (int i = 0; i < N_ITER; ++i)
 	{
-		// time = DES_nonIV<ECB_Mode<DES>::Encryption, ECB_Mode<DES>::Decryption>(prng, key, plaintext);
-		time = DES_IV<CBC_Mode<DES>::Encryption, CBC_Mode<DES>::Decryption>(prng, key, iv, plaintext, ciphertext);
+		time = DES_IV<Encryption, Decryption>(prng, key, iv, plaintext, ciphertext, recovered);
+		sum += time;
+	}
+	return sum;
+}
+
+template <class Encryption, class Decryption>
+double Looping_nonIV(AutoSeededRandomPool &prng, SecByteBlock &key, CryptoPP::byte iv[], string plaintext, string &ciphertext, string &recovered)
+{
+	double sum = 0;
+	int time;
+
+	for (int i = 0; i < N_ITER; ++i)
+	{
+		time = DES_nonIV<Encryption, Decryption>(prng, key, plaintext, ciphertext, recovered);
 		sum += time;
 	}
 	return sum;
@@ -279,16 +317,22 @@ void SetupVietnameseSupport()
 
 int SelectMode()
 {
+	// Clear screen for better observation
+	system("cls");
+
 	int mode;
-	wcout << "Chọn mode of operation (nhập vào số tương ứng):\n";
-	cout << "(1) ECB\n";
-	cout << "(2) CBC\n";
-	cout << "(3) CFB\n";
-	cout << "(4) OFB\n";
-	cout << "(5) CTR\n";
+	wcout << L"Chọn mode of operation (nhập vào số tương ứng):\n";
+	// cout << "Select a mode of operation:\n";
+	wcout << L"(1) ECB\n";
+	wcout << L"(2) CBC\n";
+	wcout << L"(3) CFB\n";
+	wcout << L"(4) OFB\n";
+	wcout << L"(5) CTR\n";
+	wcout << L"> ";
 
-	cin >> mode;
+	wcin >> mode;
 
+	// If `mode` is unknown
 	if (mode < 1 || mode > 5)
 		return -1;
 	return mode;
@@ -296,29 +340,60 @@ int SelectMode()
 
 int main(int argc, char *argv[])
 {
-	// SetupVietnameseSupport();
+	SetupVietnameseSupport();
 	AutoSeededRandomPool prng;
 	SecByteBlock key(DES::DEFAULT_KEYLENGTH);
 	CryptoPP::byte iv[DES::BLOCKSIZE];
 
-	string plaintext, ciphertext;
+	wstring wplaintext, wciphertext, wrecoveredtext;
+	string plaintext, ciphertext, recoveredtext;
 
-	cout << "Plaintext: ";
-	getline(cin, plaintext);
+	wcout << L"Plaintext: ";
+	getline(wcin, wplaintext);
+	plaintext = ws2s(wplaintext);
 
-	double etime = LoopingIV(prng, key, iv, plaintext, ciphertext);
+	int mode = SelectMode();
+	double etime;
 
-	cout << "Key: ";
+	switch (mode)
+	{
+	case 1:
+		etime = Looping_nonIV<ECB_Mode<DES>::Encryption, ECB_Mode<DES>::Decryption>(prng, key, iv, plaintext, ciphertext, recoveredtext);
+		break;
+	case 2:
+		etime = LoopingIV<CBC_Mode<DES>::Encryption, CBC_Mode<DES>::Decryption>(prng, key, iv, plaintext, ciphertext, recoveredtext);
+		break;
+	case 3:
+		etime = LoopingIV<CFB_Mode<DES>::Encryption, CFB_Mode<DES>::Decryption>(prng, key, iv, plaintext, ciphertext, recoveredtext);
+		break;
+	case 4:
+		etime = LoopingIV<OFB_Mode<DES>::Encryption, OFB_Mode<DES>::Decryption>(prng, key, iv, plaintext, ciphertext, recoveredtext);
+		break;
+	case 5:
+		etime = LoopingIV<CTR_Mode<DES>::Encryption, CTR_Mode<DES>::Decryption>(prng, key, iv, plaintext, ciphertext, recoveredtext);
+		break;
+	default:
+		wcout << L"'Mode of operation' không hợp lệ!\n";
+		etime = 0;
+		break;
+	}
+
+	wcout << endl;
+	wcout << L"Plaintext: " << wplaintext << endl;
+
+	wcout << L"Key: ";
 	PrettyPrint(key);
 
-	cout << "IV: ";
+	wcout << L"IV: ";
 	PrettyPrint(iv);
 
-	cout << "Ciphertext: ";
+	wcout << L"Ciphertext: ";
 	PrettyPrint(ciphertext);
 
-	cout << "Execution time of 10000 rounds: " << etime << " ms" << endl;
-	cout << "Average execution time of each round: " << etime / 10000 << " ms" << endl;
+	wcout << L"Recovered text: " << s2ws(recoveredtext) << endl;
+
+	wcout << L"Tổng thời gian chạy trong 10000 vòng: " << etime << " ms" << endl;
+	wcout << L"Thời gian chạy trung bình của mỗi vòng: " << etime / 10000 << " ms" << endl;
 
 	return 0;
 }
