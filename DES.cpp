@@ -55,6 +55,7 @@ using CryptoPP::SecByteBlock;
 
 // Referece:
 //https://stackoverflow.com/questions/4804298/how-to-convert-wstring-into-string
+// Convert string to wstring
 wstring s2ws(const std::string &str)
 {
 	using convert_type = std::codecvt_utf8<wchar_t>;
@@ -62,6 +63,7 @@ wstring s2ws(const std::string &str)
 	return converter.from_bytes(str);
 }
 
+// Convert wstring to string
 string ws2s(const std::wstring &wstr)
 {
 	using convert_type = std::codecvt_utf8<wchar_t>;
@@ -69,9 +71,10 @@ string ws2s(const std::wstring &wstr)
 	return converter.to_bytes(wstr);
 }
 
+// Pretty print SecByteBlock as a hex wstring
 void PrettyPrint(SecByteBlock byte_block)
 {
-	// Convert bytes from byte_block to a hex string,
+	// Convert the byte_block to a hex wstring,
 	// and print to console
 	string encoded_string;
 	StringSource(byte_block, byte_block.size(), true,
@@ -81,9 +84,10 @@ void PrettyPrint(SecByteBlock byte_block)
 	wcout << wstr << endl;
 }
 
+// Pretty print Cryptopp::byte array as a hex wstring
 void PrettyPrint(CryptoPP::byte *bytes_array)
 {
-	// Convert bytes from bytes_array to a hex string,
+	// Convert the bytes_array to a hex wstring,
 	// and print to console
 	string encoded_string;
 	StringSource(bytes_array, sizeof(bytes_array), true,
@@ -93,9 +97,10 @@ void PrettyPrint(CryptoPP::byte *bytes_array)
 	wcout << wstr << endl;
 }
 
+// Pretty print byte string as a hex wstring
 void PrettyPrint(string str)
 {
-	// Convert byte string to hex string,
+	// Convert byte string to a hex wstring,
 	// and print to console.
 	string encoded_string;
 	StringSource(str, true,
@@ -106,21 +111,24 @@ void PrettyPrint(string str)
 }
 
 // a template for encryption of various modes of operation
+// Mode is 'm<DES>::Encryption' in which 'm' is the actual mode of DES
 template <class Mode>
 void Encrypt(const string &plain, Mode &e, string &cipher)
 {
 	cipher.clear();
 
-	// StringSource acts as a pipeliner which intakes "plain" as input,
+	// StringSource acts as a pipeliner which intakes 'plain' as input,
 	// uses StreamTransformationFilter to perform transformation on the input `plain`.
 
-	// StreamTransformationFilter adds padding and invokces the Mode `e` to perform encryption on the cipher,
-	// the result (recovered plaintext) is stored in "recovered" variable.
+	// StreamTransformationFilter adds padding and invokes the Encryption object `e`
+	// to perform encryption on the plaintext 'plain'.
+	// The result (recovered plaintext) is stored in 'recovered' variable.
 	StringSource(plain, true,
 				 new StreamTransformationFilter(e, new StringSink(cipher)));
 }
 
 // a template for encryption of various modes of operation
+// Mode is 'm<DES>::Decryption' in which 'm' is the actual mode of DES
 template <class Mode>
 void Decrypt(const string &cipher, Mode &d, string &recovered)
 {
@@ -129,13 +137,15 @@ void Decrypt(const string &cipher, Mode &d, string &recovered)
 	// StringSource acts as a pipeliner which intakes 'cipher" as input,
 	// uses StreamTransformationFilter to perform transformation on the `cipher`.
 
-	// StreamTransformationFilter removes padding and invokdes Mode `d` to perform decryption on the cipher,
-	// the result (recovered plaintext) is stored in "recovered" variable.
+	// StreamTransformationFilter removes padding and invokes the Decryption object `d`
+	// to perform decryption on the ciphertext 'cipher'.
+	// The result (recovered plaintext) is stored in 'recovered' variable.
 	StringSource(cipher, true,
 				 new StreamTransformationFilter(d,
 												new StringSink(recovered)));
 }
 
+// An example of DES with CBC mode
 void DES_CBC()
 {
 	// AutoSeededRandomPool is a random number generater and is seeded automatically.
@@ -212,10 +222,14 @@ void DES_CBC()
 	}
 }
 
+// A template to perform encryption and decryption with various modes of operation that don't use IV
+// The 'key', 'ciphertext' and 'recovered' will be changed in place.
+// This function returns the time (in ms) to perform DES algorithm in 1 time.
 template <class Encryption, class Decryption>
 double DES_nonIV(AutoSeededRandomPool &prng, SecByteBlock &key, string plaintext, string &ciphertext, string &recovered)
 {
 	// clock() return the current clock tick of the processor
+	// Get starting clock tick
 	int start = clock();
 
 	// Generate new key
@@ -230,7 +244,7 @@ double DES_nonIV(AutoSeededRandomPool &prng, SecByteBlock &key, string plaintext
 
 	// Declare the new Decryption object
 	Decryption d;
-	// Attach the key to the Encryption object
+	// Attach the key to the Decryption object
 	d.SetKey(key, key.size());
 	// Perform decryption
 	Decrypt<Decryption>(ciphertext, d, recovered);
@@ -242,10 +256,14 @@ double DES_nonIV(AutoSeededRandomPool &prng, SecByteBlock &key, string plaintext
 	return double(end - start) / CLOCKS_PER_SEC * 1000;
 }
 
+// A template to perform encryption and decryption with various modes of operation that use IV
+// The 'key', iv, 'ciphertext' and 'recovered' will be changed in place.
+// This function return the time (in ms) to perform DES algorithm in 1 time.
 template <class Encryption, class Decryption>
 double DES_IV(AutoSeededRandomPool &prng, SecByteBlock &key, CryptoPP::byte iv[], string plaintext, string &ciphertext, string &recovered)
 {
 	// clock() return the current clock tick of the processor
+	// Get the starting clock tick
 	int start = clock();
 
 	// Generate new key
@@ -263,7 +281,7 @@ double DES_IV(AutoSeededRandomPool &prng, SecByteBlock &key, CryptoPP::byte iv[]
 
 	// Declare the new Decryption object
 	Decryption d;
-	// Attach the key to the Encryption object
+	// Attach the key to the decryption object
 	d.SetKeyWithIV(key, key.size(), iv);
 	// Perform decryption
 	Decrypt<Decryption>(ciphertext, d, recovered);
@@ -275,6 +293,11 @@ double DES_IV(AutoSeededRandomPool &prng, SecByteBlock &key, CryptoPP::byte iv[]
 	return double(end - start) / CLOCKS_PER_SEC * 1000;
 }
 
+// A template to perform DES with various modes of operation that use IV.
+// The 'key', iv, 'ciphertext' and 'recovered' are changed in place;
+// therefore, the last value of them can be used to displayed on console as an example.
+// The number of iteration is pre-defined as 'N_ITER'.
+// This function returns the total execution time (in ms) of N_ITER iterations.
 template <class Encryption, class Decryption>
 double LoopingIV(AutoSeededRandomPool &prng, SecByteBlock &key, CryptoPP::byte iv[], string plaintext, string &ciphertext, string &recovered)
 {
@@ -289,6 +312,11 @@ double LoopingIV(AutoSeededRandomPool &prng, SecByteBlock &key, CryptoPP::byte i
 	return sum;
 }
 
+// A template to perform DES with various modes of operation that don't use IV.
+// The 'key', iv, 'ciphertext' and 'recovered' are changed in place;
+// therefore, the last value of them can be used to displayed on console as an example.
+// The number of iteration is pre-defined as 'N_ITER'.
+// This function returns the total execution time (in ms) of N_ITER iterations.
 template <class Encryption, class Decryption>
 double Looping_nonIV(AutoSeededRandomPool &prng, SecByteBlock &key, CryptoPP::byte iv[], string plaintext, string &ciphertext, string &recovered)
 {
@@ -303,26 +331,21 @@ double Looping_nonIV(AutoSeededRandomPool &prng, SecByteBlock &key, CryptoPP::by
 	return sum;
 }
 
+// Setup for Vietnamese language support
 void SetupVietnameseSupport()
 {
 	_setmode(_fileno(stdin), _O_U16TEXT);
 	_setmode(_fileno(stdout), _O_U16TEXT);
-	// std::wcout << L"Tiếng Việt có dấu" << std::endl;
-	// std::wstring test;
-	// std::wcout << L"Hãy nhập vào một chuỗi ký tự:" << std::endl;
-	// std::getline(std::wcin, test);
-	// std::wcout << L"Chuỗi ký tự mà bạn vừa mới nhập:" << std::endl;
-	// std::wcout << test << std::endl;
 }
 
+// Select mode of operation
 int SelectMode()
 {
-	// Clear screen for better observation
+	// Clear screen for better on-console display
 	system("cls");
 
 	int mode;
-	wcout << L"Chọn mode of operation (nhập vào số tương ứng):\n";
-	// cout << "Select a mode of operation:\n";
+	wcout << L"Chọn một mode of operation (nhập vào số tương ứng):\n";
 	wcout << L"(1) ECB\n";
 	wcout << L"(2) CBC\n";
 	wcout << L"(3) CFB\n";
@@ -330,17 +353,28 @@ int SelectMode()
 	wcout << L"(5) CTR\n";
 	wcout << L"> ";
 
-	wcin >> mode;
+	try
+	{
+		wcin >> mode;
 
-	// If `mode` is unknown
-	if (mode < 1 || mode > 5)
+		// if mode is of type 'int' but not within the valid range
+		if (mode < 1 || mode > 5)
+			return -1;
+		return mode;
+	}
+	catch (...)
+	{
+		// If `mode` is not of type 'int'
 		return -1;
-	return mode;
+	}
 }
 
 int main(int argc, char *argv[])
 {
+	// Setup for Vietnamese language support
 	SetupVietnameseSupport();
+
+	// Declaration
 	AutoSeededRandomPool prng;
 	SecByteBlock key(DES::DEFAULT_KEYLENGTH);
 	CryptoPP::byte iv[DES::BLOCKSIZE];
@@ -348,13 +382,18 @@ int main(int argc, char *argv[])
 	wstring wplaintext, wciphertext, wrecoveredtext;
 	string plaintext, ciphertext, recoveredtext;
 
+	// Acquire plaintext
 	wcout << L"Plaintext: ";
 	getline(wcin, wplaintext);
+
+	// Convert wstring 'wplaintext' to string 'plaintext' for the algorithm to work properly
 	plaintext = ws2s(wplaintext);
 
+	// Select mode
 	int mode = SelectMode();
 	double etime;
 
+	// Decide on the mode
 	switch (mode)
 	{
 	case 1:
@@ -378,6 +417,7 @@ int main(int argc, char *argv[])
 		break;
 	}
 
+	// Display an example of the algorithm in addition to the estimated time
 	wcout << endl;
 	wcout << L"Plaintext: " << wplaintext << endl;
 
