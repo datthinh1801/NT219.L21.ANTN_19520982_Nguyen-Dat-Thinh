@@ -1,17 +1,20 @@
 // g++ -g3 -ggdb -O0 -DDEBUG -I/usr/include/cryptopp Driver.cpp -o Driver.exe -lcryptopp -lpthread
 // g++ -g -O2 -DNDEBUG -I/usr/include/cryptopp Driver.cpp -o Driver.exe -lcryptopp -lpthread
-#include <io.h>
-#include <fcntl.h>
-#include <string>
 
 #include "cryptopp/osrng.h"
 using CryptoPP::AutoSeededRandomPool;
 
 #include <iostream>
+#include <io.h>
+#include <fcntl.h>
 using std::cerr;
 using std::cin;
 using std::cout;
 using std::endl;
+using std::getline;
+using std::wcin;
+using std::wcout;
+using std::wstring;
 
 #include <string>
 using std::string;
@@ -129,8 +132,9 @@ void DES_CBC()
 	string plain;
 	string cipher, encoded, recovered;
 
-	// cout << "key length: " << DES::DEFAULT_KEYLENGTH << endl;
-	// cout << "block size: " << DES::BLOCKSIZE << endl;
+	// size of bytes
+	// cout << "key length: " << key.size() << endl;
+	// cout << "block size: " << sizeof(iv) << endl;
 
 	// Pretty print key:
 	// Convert bytes from the Secure Block of the "key" to a hex string stored in "encoded" variable
@@ -145,7 +149,7 @@ void DES_CBC()
 	try
 	{
 		cout << "plain-text: ";
-		std::getline(cin, plain);
+		getline(cin, plain);
 
 		// Create an encryption object of DES, using CBC mode of operation
 		CBC_Mode<DES>::Encryption e;
@@ -184,6 +188,83 @@ void DES_CBC()
 	}
 }
 
+template <class Encryption, class Decryption>
+double DES_nonIV(AutoSeededRandomPool &prng, SecByteBlock &key, string plaintext, string &ciphertext)
+{
+	// clock() return the current clock tick of the processor
+	int start = clock();
+
+	// Generate new key
+	prng.GenerateBlock(key, key.size());
+
+	// Declare new Encryption object
+	Encryption e;
+	// Attach the key to the Encryption object
+	e.SetKey(key, key.size());
+	// Perform encryption
+	Encrypt<Encryption>(plaintext, e, ciphertext);
+
+	// Declare the new Decryption object
+	Decryption d;
+	// Attach the key to the Encryption object
+	d.SetKey(key, key.size());
+	// Perform decryption
+	Decrypt<Decryption>(ciphertext, d, plaintext);
+
+	// Get ending clock tick
+	int end = clock();
+
+	// Return execution time in miliseconds
+	return double(end - start) / CLOCKS_PER_SEC * 1000;
+}
+
+template <class Encryption, class Decryption>
+double DES_IV(AutoSeededRandomPool &prng, SecByteBlock &key, CryptoPP::byte iv[], string plaintext, string &ciphertext)
+{
+	// clock() return the current clock tick of the processor
+	int start = clock();
+
+	// Generate new key
+	prng.GenerateBlock(key, key.size());
+
+	// Generate IV
+	prng.GenerateBlock(iv, sizeof(iv));
+
+	// Declare new Encryption object
+	Encryption e;
+	// Attach the key to the Encryption object
+	e.SetKeyWithIV(key, key.size(), iv);
+	// Perform encryption
+	Encrypt<Encryption>(plaintext, e, ciphertext);
+
+	// Declare the new Decryption object
+	Decryption d;
+	// Attach the key to the Encryption object
+	d.SetKeyWithIV(key, key.size(), iv);
+	// Perform decryption
+	Decrypt<Decryption>(ciphertext, d, plaintext);
+
+	// Get ending clock tick
+	int end = clock();
+
+	// Return execution time in miliseconds
+	return double(end - start) / CLOCKS_PER_SEC * 1000;
+}
+
+double LoopingIV(AutoSeededRandomPool &prng, SecByteBlock &key, CryptoPP::byte iv[], string plaintext, string &ciphertext)
+{
+	double sum = 0;
+	int time;
+
+	for (int i = 0; i < 10000; ++i)
+	{
+		// time = DES_nonIV<ECB_Mode<DES>::Encryption, ECB_Mode<DES>::Decryption>(prng, key, plaintext);
+		time = DES_IV<CBC_Mode<DES>::Encryption, CBC_Mode<DES>::Decryption>(prng, key, iv, plaintext, ciphertext);
+		sum += time;
+	}
+	return sum;
+}
+
 void SetupVietnameseSupport()
 {
 	_setmode(_fileno(stdin), _O_U16TEXT);
@@ -196,8 +277,48 @@ void SetupVietnameseSupport()
 	// std::wcout << test << std::endl;
 }
 
+int SelectMode()
+{
+	int mode;
+	wcout << "Chọn mode of operation (nhập vào số tương ứng):\n";
+	cout << "(1) ECB\n";
+	cout << "(2) CBC\n";
+	cout << "(3) CFB\n";
+	cout << "(4) OFB\n";
+	cout << "(5) CTR\n";
+
+	cin >> mode;
+
+	if (mode < 1 || mode > 5)
+		return -1;
+	return mode;
+}
+
 int main(int argc, char *argv[])
 {
-	SetupVietnameseSupport();
+	// SetupVietnameseSupport();
+	AutoSeededRandomPool prng;
+	SecByteBlock key(DES::DEFAULT_KEYLENGTH);
+	CryptoPP::byte iv[DES::BLOCKSIZE];
+
+	string plaintext, ciphertext;
+
+	cout << "Plaintext: ";
+	getline(cin, plaintext);
+
+	double etime = LoopingIV(prng, key, iv, plaintext, ciphertext);
+
+	cout << "Key: ";
+	PrettyPrint(key);
+
+	cout << "IV: ";
+	PrettyPrint(iv);
+
+	cout << "Ciphertext: ";
+	PrettyPrint(ciphertext);
+
+	cout << "Execution time of 10000 rounds: " << etime << " ms" << endl;
+	cout << "Average execution time of each round: " << etime / 10000 << " ms" << endl;
+
 	return 0;
 }
