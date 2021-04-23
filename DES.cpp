@@ -226,11 +226,11 @@ void DES_CBC()
 // The 'key', 'ciphertext' and 'recovered' will be changed in place.
 // This function returns the time (in ms) to perform DES algorithm in 1 time.
 template <class Encryption, class Decryption>
-double DES_nonIV(AutoSeededRandomPool &prng, SecByteBlock &key, string plaintext, string &ciphertext, string &recovered)
+double *DES_nonIV(AutoSeededRandomPool &prng, SecByteBlock &key, string plaintext, string &ciphertext, string &recovered)
 {
 	// clock() return the current clock tick of the processor
-	// Get starting clock tick
-	int start = clock();
+	// Get starting clock tick of encryption
+	int start_e = clock();
 
 	// Generate new key
 	prng.GenerateBlock(key, key.size());
@@ -242,6 +242,12 @@ double DES_nonIV(AutoSeededRandomPool &prng, SecByteBlock &key, string plaintext
 	// Perform encryption
 	Encrypt<Encryption>(plaintext, e, ciphertext);
 
+	// Get ending clock tick of encryption
+	int end_e = clock();
+
+	// Get starting clock tick of decryption
+	int start_d = clock();
+
 	// Declare the new Decryption object
 	Decryption d;
 	// Attach the key to the Decryption object
@@ -249,22 +255,27 @@ double DES_nonIV(AutoSeededRandomPool &prng, SecByteBlock &key, string plaintext
 	// Perform decryption
 	Decrypt<Decryption>(ciphertext, d, recovered);
 
-	// Get ending clock tick
-	int end = clock();
+	// Get ending clock tick of decryption
+	int end_d = clock();
 
-	// Return execution time in miliseconds
-	return double(end - start) / CLOCKS_PER_SEC * 1000;
+	// Calculate execution time (in ms) of encryption and decryption individually
+	double *etime = new double[2];
+	etime[0] = double(end_e - start_e) / CLOCKS_PER_SEC * 1000;
+	etime[1] = double(end_d - start_d) / CLOCKS_PER_SEC * 1000;
+
+	// Return execution time
+	return etime;
 }
 
 // A template to perform encryption and decryption with various modes of operation that use IV
 // The 'key', iv, 'ciphertext' and 'recovered' will be changed in place.
 // This function return the time (in ms) to perform DES algorithm in 1 time.
 template <class Encryption, class Decryption>
-double DES_IV(AutoSeededRandomPool &prng, SecByteBlock &key, CryptoPP::byte iv[], string plaintext, string &ciphertext, string &recovered)
+double *DES_IV(AutoSeededRandomPool &prng, SecByteBlock &key, CryptoPP::byte iv[], string plaintext, string &ciphertext, string &recovered)
 {
 	// clock() return the current clock tick of the processor
-	// Get the starting clock tick
-	int start = clock();
+	// Get the starting clock tick of encryption
+	int start_e = clock();
 
 	// Generate new key
 	prng.GenerateBlock(key, key.size());
@@ -279,6 +290,12 @@ double DES_IV(AutoSeededRandomPool &prng, SecByteBlock &key, CryptoPP::byte iv[]
 	// Perform encryption
 	Encrypt<Encryption>(plaintext, e, ciphertext);
 
+	// Get ending clock tick of encryption
+	int end_e = clock();
+
+	// Get starting clock tick of decryption
+	int start_d = clock();
+
 	// Declare the new Decryption object
 	Decryption d;
 	// Attach the key to the decryption object
@@ -286,11 +303,15 @@ double DES_IV(AutoSeededRandomPool &prng, SecByteBlock &key, CryptoPP::byte iv[]
 	// Perform decryption
 	Decrypt<Decryption>(ciphertext, d, recovered);
 
-	// Get ending clock tick
-	int end = clock();
+	// Get ending clock tick of decryption
+	int end_d = clock();
 
-	// Return execution time in miliseconds
-	return double(end - start) / CLOCKS_PER_SEC * 1000;
+	// Calculate execution time (in ms) of encryption and decryption individually
+	double *etime = new double[2];
+	etime[0] = double(end_e - start_e) / CLOCKS_PER_SEC * 1000;
+	etime[1] = double(end_d - start_d) / CLOCKS_PER_SEC * 1000;
+
+	return etime;
 }
 
 // A template to perform DES with various modes of operation that use IV.
@@ -299,15 +320,20 @@ double DES_IV(AutoSeededRandomPool &prng, SecByteBlock &key, CryptoPP::byte iv[]
 // The number of iteration is pre-defined as 'N_ITER'.
 // This function returns the total execution time (in ms) of N_ITER iterations.
 template <class Encryption, class Decryption>
-double LoopingIV(AutoSeededRandomPool &prng, SecByteBlock &key, CryptoPP::byte iv[], string plaintext, string &ciphertext, string &recovered)
+double *LoopingIV(AutoSeededRandomPool &prng, SecByteBlock &key, CryptoPP::byte iv[], string plaintext, string &ciphertext, string &recovered)
 {
-	double sum = 0;
-	int time;
+	// first element relates to the encryption time
+	// second element relates to the decryption time
+	double *sum = new double[2];
+	double *etime = NULL;
+	sum[0] = 0;
+	sum[1] = 0;
 
 	for (int i = 0; i < N_ITER; ++i)
 	{
-		time = DES_IV<Encryption, Decryption>(prng, key, iv, plaintext, ciphertext, recovered);
-		sum += time;
+		etime = DES_IV<Encryption, Decryption>(prng, key, iv, plaintext, ciphertext, recovered);
+		sum[0] += etime[0];
+		sum[1] += etime[1];
 	}
 	return sum;
 }
@@ -318,15 +344,20 @@ double LoopingIV(AutoSeededRandomPool &prng, SecByteBlock &key, CryptoPP::byte i
 // The number of iteration is pre-defined as 'N_ITER'.
 // This function returns the total execution time (in ms) of N_ITER iterations.
 template <class Encryption, class Decryption>
-double Looping_nonIV(AutoSeededRandomPool &prng, SecByteBlock &key, CryptoPP::byte iv[], string plaintext, string &ciphertext, string &recovered)
+double *Looping_nonIV(AutoSeededRandomPool &prng, SecByteBlock &key, CryptoPP::byte iv[], string plaintext, string &ciphertext, string &recovered)
 {
-	double sum = 0;
-	int time;
+	// first element relates to the encryption time
+	// second element relates to the decryption time
+	double *sum = new double[2];
+	double *etime = NULL;
+	sum[0] = 0;
+	sum[1] = 0;
 
 	for (int i = 0; i < N_ITER; ++i)
 	{
-		time = DES_nonIV<Encryption, Decryption>(prng, key, plaintext, ciphertext, recovered);
-		sum += time;
+		etime = DES_nonIV<Encryption, Decryption>(prng, key, plaintext, ciphertext, recovered);
+		sum[0] += etime[0];
+		sum[1] += etime[1];
 	}
 	return sum;
 }
@@ -391,7 +422,7 @@ int main(int argc, char *argv[])
 
 	// Select mode
 	int mode = SelectMode();
-	double etime;
+	double *etime;
 
 	// Decide on the mode
 	switch (mode)
@@ -431,9 +462,17 @@ int main(int argc, char *argv[])
 	PrettyPrint(ciphertext);
 
 	wcout << L"Recovered text: " << s2ws(recoveredtext) << endl;
+	wcout << "--------------------------------------------------" << endl;
 
-	wcout << L"Tổng thời gian chạy trong 10000 vòng: " << etime << " ms" << endl;
-	wcout << L"Thời gian chạy trung bình của mỗi vòng: " << etime / 10000 << " ms" << endl;
+	wcout << L"Tổng thời gian mã hóa trong 10000 vòng: " << etime[0] << " ms" << endl;
+	wcout << L"Thời gian mã hóa trung bình của mỗi vòng: " << etime[0] / 10000 << " ms" << endl;
+
+	wcout << endl;
+
+	wcout << L"Tổng thời gian giải mã trong 10000 vòng: " << etime[1] << " ms" << endl;
+	wcout << L"Thời gian giải mã trung bình của mỗi vòng: " << etime[1] / 10000 << " ms" << endl;
+
+	delete[] etime;
 
 	return 0;
 }
