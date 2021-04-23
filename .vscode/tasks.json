@@ -18,6 +18,7 @@
 				"-l:libcryptopp.a", //library file
 				"-I${workspaceFolder}\\include", // use this for ease of #include
 				"-Wall",
+				"-w"	// suppress all warnings
 			],
 			"options": {
 				"cwd": "D:\\MSYS2 64bit\\mingw64\\bin"
