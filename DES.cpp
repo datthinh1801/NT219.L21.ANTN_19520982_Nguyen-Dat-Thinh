@@ -1,5 +1,8 @@
 // g++ -g3 -ggdb -O0 -DDEBUG -I/usr/include/cryptopp Driver.cpp -o Driver.exe -lcryptopp -lpthread
 // g++ -g -O2 -DNDEBUG -I/usr/include/cryptopp Driver.cpp -o Driver.exe -lcryptopp -lpthread
+#include <io.h>
+#include <fcntl.h>
+#include <string>
 
 #include "cryptopp/osrng.h"
 using CryptoPP::AutoSeededRandomPool;
@@ -32,11 +35,11 @@ using CryptoPP::StringSource;
 using CryptoPP::DES;
 
 #include "cryptopp/modes.h"
-using CryptoPP::CBC_CTS_Mode;
 using CryptoPP::CBC_Mode;
 using CryptoPP::CFB_Mode;
-using CryptoPP::CTR_Mode;
 using CryptoPP::ECB_Mode;
+// using CryptoPP::CBC_CTS_Mode;
+using CryptoPP::CTR_Mode;
 using CryptoPP::OFB_Mode;
 
 #include "cryptopp/secblock.h"
@@ -82,7 +85,9 @@ void Encrypt(const string &plain, Mode &e, string &cipher)
 	cipher.clear();
 
 	// StringSource acts as a pipeliner which intakes "plain" as input,
-	// uses StreamTransformationFilter to add padding and perform encryption on the cipher,
+	// uses StreamTransformationFilter to perform transformation on the input `plain`.
+
+	// StreamTransformationFilter adds padding and invokces the Mode `e` to perform encryption on the cipher,
 	// the result (recovered plaintext) is stored in "recovered" variable.
 	StringSource(plain, true,
 				 new StreamTransformationFilter(e, new StringSink(cipher)));
@@ -95,18 +100,17 @@ void Decrypt(const string &cipher, Mode &d, string &recovered)
 	recovered.clear();
 
 	// StringSource acts as a pipeliner which intakes 'cipher" as input,
-	// uses StreamTransformationFilter to remove padding and perform decryption on the cipher,
+	// uses StreamTransformationFilter to perform transformation on the `cipher`.
+
+	// StreamTransformationFilter removes padding and invokdes Mode `d` to perform decryption on the cipher,
 	// the result (recovered plaintext) is stored in "recovered" variable.
 	StringSource(cipher, true,
 				 new StreamTransformationFilter(d,
 												new StringSink(recovered)));
 }
 
-int DES_CBC()
+void DES_CBC()
 {
-	// Get starting time.
-	int start_time = clock();
-
 	// AutoSeededRandomPool is a random number generater and is seeded automatically.
 	AutoSeededRandomPool prng;
 
@@ -178,13 +182,22 @@ int DES_CBC()
 		cerr << e.what() << endl;
 		exit(1);
 	}
+}
 
-	int end_time = clock();
-	return end_time - start_time;
+void SetupVietnameseSupport()
+{
+	_setmode(_fileno(stdin), _O_U16TEXT);
+	_setmode(_fileno(stdout), _O_U16TEXT);
+	// std::wcout << L"Tiếng Việt có dấu" << std::endl;
+	// std::wstring test;
+	// std::wcout << L"Hãy nhập vào một chuỗi ký tự:" << std::endl;
+	// std::getline(std::wcin, test);
+	// std::wcout << L"Chuỗi ký tự mà bạn vừa mới nhập:" << std::endl;
+	// std::wcout << test << std::endl;
 }
 
 int main(int argc, char *argv[])
 {
-	DES_CBC();
+	SetupVietnameseSupport();
 	return 0;
 }
