@@ -7,7 +7,7 @@
 using namespace std;
 
 /*
-CONSTANT DECLARATION:
+START CONSTANT DECLARATION
 */
 
 // Permuted choice 1
@@ -121,7 +121,24 @@ const unsigned char inv_ip[64] = {
 // Circular shift routine
 const unsigned char shift_routine[16] = {1, 1, 2, 2, 2, 2, 2, 2, 1, 2, 2, 2, 2, 2, 2, 1};
 
-// Convert a decimal value to a vector of bits
+/*
+END CONSTANT DECLARATION
+*/
+
+// Extract `len` bits from the block
+// Starting from `start`
+vector<unsigned char> Split(vector<unsigned char> block, unsigned char start, unsigned char len)
+{
+    vector<unsigned char> sub_bits(len);
+    for (int i = 0; i < len; ++i)
+    {
+        sub_bits[i] = block[start + i];
+    }
+
+    return sub_bits;
+}
+
+// Convert an integer to a vector representing bits
 vector<unsigned char> ConvertDecToBin(unsigned char value, unsigned char len)
 {
     vector<unsigned char> bits(len);
@@ -134,12 +151,41 @@ vector<unsigned char> ConvertDecToBin(unsigned char value, unsigned char len)
     return bits;
 }
 
+// Convert a vector representing bits to an integer
 unsigned char ConvertBinToDec(vector<unsigned char> block)
 {
     unsigned char result = 0;
     for (int i = 0; i < block.size(); ++i)
     {
         result = (result << 1) + block[i];
+    }
+    return result;
+}
+
+// Convert a string to a vector representing bits
+vector<unsigned char> ConvertStringToBin(string str)
+{
+    vector<unsigned char> result;
+    for (int i = 0; i < str.length(); ++i)
+    {
+        vector<unsigned char> single_char = ConvertDecToBin(int(str[i]), 8);
+        for (int j = 0; j < 8; ++j)
+        {
+            result.push_back(single_char[j]);
+        }
+    }
+
+    return result;
+}
+
+// Convert a vector representing bits to a string
+string ConvertBinToString(vector<unsigned char> block)
+{
+    string result = "";
+    for (int i = 0; i < block.size(); i += 8)
+    {
+        unsigned char ascii_value = ConvertBinToDec(Split(block, i, 8));
+        result += ascii_value;
     }
     return result;
 }
@@ -189,18 +235,6 @@ vector<unsigned char> PermutedChoice1(vector<unsigned char> block)
         permuted_key[i] = block[pc1[i]];
     }
     return permuted_key;
-}
-
-// Extract a part of the bits
-// Starting from `start`
-vector<unsigned char> Split(vector<unsigned char> block, unsigned char start, unsigned char len)
-{
-    vector<unsigned char> sub_bits(len);
-    for (int i = 0; i < len; ++i)
-    {
-        sub_bits[i] = block[start + i];
-    }
-    return sub_bits;
 }
 
 // Circular left shift the block
@@ -286,7 +320,7 @@ vector<unsigned char> SubstituteWithSBox(vector<unsigned char> block)
     for (int i = 0; i < 8; ++i)
     {
         // Extract a 6-bit block from the 48-bit block.
-        vector<unsigned char> sub_block = Split(block, i * 8, 6);
+        vector<unsigned char> sub_block = Split(block, i * 6, 6);
 
         // Get the bits of the sub_block that represents the row index in the Sbox.
         vector<unsigned char> row_block(2);
@@ -303,7 +337,6 @@ vector<unsigned char> SubstituteWithSBox(vector<unsigned char> block)
         unsigned char col = ConvertBinToDec(col_block);
 
         // Substitute
-        unsigned char sub_block_value = ConvertBinToDec(sub_block);
         unsigned char substituted_value = sbox[i][row][col];
 
         vector<unsigned char> substituted_block = ConvertDecToBin(substituted_value, 4);
@@ -315,10 +348,132 @@ vector<unsigned char> SubstituteWithSBox(vector<unsigned char> block)
     return result;
 }
 
+vector<unsigned char> PermutateP(vector<unsigned char> block)
+{
+    vector<unsigned char> result(32);
+    for (int i = 0; i < 32; ++i)
+    {
+        result[i] = block[p[i]];
+    }
+    return result;
+}
+
+vector<unsigned char> InverseInitialPermutate(vector<unsigned char> block)
+{
+    vector<unsigned char> result(64);
+    for (int i = 0; i < 64; ++i)
+    {
+        result[i] = block[inv_ip[i]];
+    }
+    return result;
+}
+
+vector<vector<unsigned char>> CalculateRoundKeys(vector<unsigned char> key)
+{
+    vector<vector<unsigned char>> round_keys(16);
+
+    // Drop parity bits of the original key
+    vector<unsigned char> key_56bit = DropParityBit(key);
+
+    // Perform permutation on the new 56-bit key
+    key_56bit = PermutedChoice1(key_56bit);
+
+    // Split the 56-bit key into 2 halves
+    vector<unsigned char> prev_lefthalf_key = Split(key_56bit, 0, 28);
+    vector<unsigned char> prev_righthalf_key = Split(key_56bit, 28, 28);
+    vector<unsigned char> this_lefthalf_key, this_righthalf_key;
+
+    for (int i = 0; i < 16; ++i)
+    {
+        this_lefthalf_key = CircularLeftShift(prev_lefthalf_key, i);
+        this_righthalf_key = CircularLeftShift(prev_righthalf_key, i);
+        round_keys[i] = Concate(this_lefthalf_key, this_righthalf_key);
+        round_keys[i] = PermutedChoice2(round_keys[i]);
+
+        prev_lefthalf_key = this_lefthalf_key;
+        prev_righthalf_key = this_righthalf_key;
+    }
+
+    return round_keys;
+}
+
+vector<unsigned char> AddPadding(vector<unsigned char> block)
+{
+    while (block.size() % 64 > 0)
+    {
+        block.push_back(0);
+    }
+    return block;
+}
+
+vector<unsigned char> Encrypt(string plaintext, vector<unsigned char> &key)
+{
+    vector<unsigned char> plainblock = ConvertStringToBin(plaintext);
+    plainblock = AddPadding(plainblock);
+    vector<unsigned char> cipherblock;
+    key.clear();
+    key = GenerateKeyRandomly();
+
+    vector<vector<unsigned char>> round_keys = CalculateRoundKeys(key);
+
+    plainblock = IniatialPermutate(plainblock);
+    vector<unsigned char> prev_left_block = Split(plainblock, 0, 32);
+    vector<unsigned char> prev_right_block = Split(plainblock, 32, 32);
+    vector<unsigned char> right_block;
+
+    for (int i = 0; i < 16; ++i)
+    {
+        right_block = Expand(prev_right_block);
+        right_block = XOR(right_block, round_keys[i]);
+        right_block = SubstituteWithSBox(right_block);
+        right_block = PermutateP(right_block);
+        right_block = XOR(right_block, prev_left_block);
+
+        prev_right_block = prev_left_block;
+        prev_left_block = right_block;
+    }
+
+    cipherblock = Concate(prev_left_block, prev_right_block);
+    cipherblock = InverseInitialPermutate(cipherblock);
+    return cipherblock;
+}
+
+vector<unsigned char> Decrypt(vector<unsigned char> cipherblock, const vector<unsigned char> &key)
+{
+    vector<unsigned char> plainblock;
+    vector<vector<unsigned char>> round_keys = CalculateRoundKeys(key);
+
+    cipherblock = IniatialPermutate(cipherblock);
+    vector<unsigned char> prev_left_block = Split(cipherblock, 0, 32);
+    vector<unsigned char> prev_right_block = Split(cipherblock, 32, 32);
+    vector<unsigned char> right_block;
+
+    for (int i = 15; i >= 0; --i)
+    {
+        right_block = Expand(prev_right_block);
+        right_block = XOR(right_block, round_keys[i]);
+        right_block = SubstituteWithSBox(right_block);
+        right_block = PermutateP(right_block);
+        right_block = XOR(right_block, prev_left_block);
+
+        prev_right_block = prev_left_block;
+        prev_left_block = right_block;
+    }
+
+    plainblock = Concate(prev_left_block, prev_right_block);
+    plainblock = InverseInitialPermutate(plainblock);
+    return plainblock;
+}
+
 int main()
 {
     // Seed the random function
     srand(time(0));
-    cout << hex << 250 << endl;
+
+    string plaintext = "Hello";
+    vector<unsigned char> key;
+    vector<unsigned char> cipherblock = Encrypt(plaintext, key);
+    vector<unsigned char> recoveredblock = Decrypt(cipherblock, key);
+    cout << ConvertBinToString(recoveredblock) << endl;
     return 0;
 }
