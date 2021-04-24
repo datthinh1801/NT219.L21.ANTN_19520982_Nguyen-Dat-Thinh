@@ -122,10 +122,10 @@ const unsigned char inv_ip[64] = {
 const unsigned char shift_routine[16] = {1, 1, 2, 2, 2, 2, 2, 2, 1, 2, 2, 2, 2, 2, 2, 1};
 
 // Convert a decimal value to a vector of bits
-vector<unsigned char> ConvertDecToBin(unsigned char value)
+vector<unsigned char> ConvertDecToBin(unsigned char value, unsigned char len)
 {
-    vector<unsigned char> bits(8);
-    for (int i = 7; i >= 0; --i)
+    vector<unsigned char> bits(len);
+    for (int i = len - 1; i >= 0; --i)
     {
         bits[i] = value & 1;
         value >>= 1;
@@ -156,7 +156,7 @@ vector<unsigned char> GenerateKeyRandomly()
         unsigned char random_value = rand() % 256;
 
         // Convert the random number to binary
-        vector<unsigned char> bits = ConvertDecToBin(random_value);
+        vector<unsigned char> bits = ConvertDecToBin(random_value, 8);
 
         // Assign bits from the random number to the key
         for (int j = 0; j < 8; ++j)
@@ -272,6 +272,45 @@ vector<unsigned char> XOR(vector<unsigned char> block1, vector<unsigned char> bl
     for (int i = 0; i < result.size(); ++i)
     {
         result[i] = block1[i] ^ block2[i];
+    }
+    return result;
+}
+
+// Perform substitution on the block.
+// Input is a 48-bit block.
+// Output is a 32-bit block.
+vector<unsigned char> SubstituteWithSBox(vector<unsigned char> block)
+{
+    vector<unsigned char> result(32);
+
+    for (int i = 0; i < 8; ++i)
+    {
+        // Extract a 6-bit block from the 48-bit block.
+        vector<unsigned char> sub_block = Split(block, i * 8, 6);
+
+        // Get the bits of the sub_block that represents the row index in the Sbox.
+        vector<unsigned char> row_block(2);
+        row_block[0] = sub_block[0];
+        row_block[1] = sub_block[5];
+        unsigned char row = ConvertBinToDec(row_block);
+
+        // Get the bits of the sub_block that represents the column index in the Sbox.
+        vector<unsigned char> col_block(4);
+        for (int i = 0; i < 4; ++i)
+        {
+            col_block[i] = block[i + 1];
+        }
+        unsigned char col = ConvertBinToDec(col_block);
+
+        // Substitute
+        unsigned char sub_block_value = ConvertBinToDec(sub_block);
+        unsigned char substituted_value = sbox[i][row][col];
+
+        vector<unsigned char> substituted_block = ConvertDecToBin(substituted_value, 4);
+        for (int j = 0; j < 4; ++j)
+        {
+            result[4 * i + j] = substituted_block[j];
+        }
     }
     return result;
 }
