@@ -47,7 +47,6 @@ using CryptoPP::AES;
 using CryptoPP::CBC_Mode;
 using CryptoPP::CFB_Mode;
 using CryptoPP::ECB_Mode;
-// using CryptoPP::CBC_CTS_Mode;
 using CryptoPP::CTR_Mode;
 using CryptoPP::OFB_Mode;
 
