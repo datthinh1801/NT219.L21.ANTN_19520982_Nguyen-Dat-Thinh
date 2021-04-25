@@ -1,4 +1,6 @@
-// Reference: http://web.mit.edu/cfields/info/des/DEShowto.txt
+// Reference:
+//http://web.mit.edu/cfields/info/des/DEShowto.txt
+//https://youtu.be/Mz3JPze3E94
 #include <iostream>
 #include <cstdlib>
 #include <time.h>
@@ -55,6 +57,7 @@ const unsigned char e[48] = {
     28, 29, 30, 31, 32, 1};
 
 // Substitution boxes
+// [POTENTIAL BUG] Does this index representation is correct
 const unsigned char sbox[8][4][16] = {
     {14, 4, 13, 1, 2, 15, 11, 8, 3, 10, 6, 12, 5, 9, 0, 7,
      0, 15, 7, 4, 14, 2, 13, 1, 10, 6, 12, 11, 9, 5, 3, 8,
@@ -125,6 +128,15 @@ const unsigned char shift_routine[16] = {1, 1, 2, 2, 2, 2, 2, 2, 1, 2, 2, 2, 2, 
 END CONSTANT DECLARATION
 */
 
+void printBits(vector<unsigned char> block)
+{
+    for (int i = 0; i < block.size(); ++i)
+    {
+        cout << (unsigned int)block[i] << " ";
+    }
+    cout << endl;
+}
+
 // Extract `len` bits from the block
 // Starting from `start`
 vector<unsigned char> Split(vector<unsigned char> block, unsigned char start, unsigned char len)
@@ -190,7 +202,7 @@ string ConvertBinToString(vector<unsigned char> block)
     return result;
 }
 
-// Generate a key randomly
+// Randomly generate a 64-bit key
 vector<unsigned char> GenerateKeyRandomly()
 {
     vector<unsigned char> key(64);
@@ -215,6 +227,7 @@ vector<unsigned char> GenerateKeyRandomly()
 }
 
 // Drop parity bits
+/*
 vector<unsigned char> DropParityBit(vector<unsigned char> block)
 {
     // Remove bit from tail to head in order not to confuse the offset while removing
@@ -225,14 +238,17 @@ vector<unsigned char> DropParityBit(vector<unsigned char> block)
 
     return block;
 }
+*/
 
-// Perform permutation on the 56-bit key
+// Perform the first permutation on the key
+// Input is a 64-bit key block
+// Output is a 56-bit key block
 vector<unsigned char> PermutedChoice1(vector<unsigned char> block)
 {
     vector<unsigned char> permuted_key(56);
     for (int i = 0; i < 56; ++i)
     {
-        permuted_key[i] = block[pc1[i]];
+        permuted_key[i] = block[pc1[i] - 1];
     }
     return permuted_key;
 }
@@ -240,7 +256,7 @@ vector<unsigned char> PermutedChoice1(vector<unsigned char> block)
 // Circular left shift the block
 vector<unsigned char> CircularLeftShift(vector<unsigned char> block, unsigned char round)
 {
-    for (int i = 0; i < shift_routine[round - 1]; ++i)
+    for (int i = 0; i < shift_routine[round]; ++i)
     {
         block.push_back(block[0]);
         block.erase(block.begin());
@@ -261,12 +277,14 @@ vector<unsigned char> Concate(vector<unsigned char> block1, vector<unsigned char
 }
 
 // Perform the permutation choice 2 on the block
+// Input is a 56-bit block
+// Output is a permutated 48-bit block
 vector<unsigned char> PermutedChoice2(vector<unsigned char> block)
 {
     vector<unsigned char> result(48);
     for (int i = 0; i < 48; ++i)
     {
-        result[i] = block[pc2[i]];
+        result[i] = block[pc2[i] - 1];
     }
     return result;
 }
@@ -276,10 +294,10 @@ vector<unsigned char> PermutedChoice2(vector<unsigned char> block)
 // Output is a 64-bit block.
 vector<unsigned char> IniatialPermutate(vector<unsigned char> block)
 {
-    vector<unsigned char> result(block.size());
-    for (int i = 0; i < block.size(); ++i)
+    vector<unsigned char> result(64);
+    for (int i = 0; i < 64; ++i)
     {
-        result[i] = block[ip[i]];
+        result[i] = block[ip[i] - 1];
     }
     return result;
 }
@@ -292,7 +310,7 @@ vector<unsigned char> Expand(vector<unsigned char> block)
     vector<unsigned char> result(48);
     for (int i = 0; i < 48; ++i)
     {
-        result[i] = block[e[i]];
+        result[i] = block[e[i] - 1];
     }
     return result;
 }
@@ -348,48 +366,61 @@ vector<unsigned char> SubstituteWithSBox(vector<unsigned char> block)
     return result;
 }
 
+// Input is a 32-bit block
+// Output is a 32-bit block
 vector<unsigned char> PermutateP(vector<unsigned char> block)
 {
     vector<unsigned char> result(32);
     for (int i = 0; i < 32; ++i)
     {
-        result[i] = block[p[i]];
+        result[i] = block[p[i] - 1];
     }
     return result;
 }
 
+// Perform the inverse initial permutation
+// Input is a 64-bit block
+// Output is a 64-bit block
 vector<unsigned char> InverseInitialPermutate(vector<unsigned char> block)
 {
     vector<unsigned char> result(64);
     for (int i = 0; i < 64; ++i)
     {
-        result[i] = block[inv_ip[i]];
+        result[i] = block[inv_ip[i] - 1];
     }
     return result;
 }
 
+// Calculate 16 round keys from the original key
+// Input is a 64-bit key block
+// Outputs are 16 48-bit key blocks
 vector<vector<unsigned char>> CalculateRoundKeys(vector<unsigned char> key)
 {
     vector<vector<unsigned char>> round_keys(16);
 
-    // Drop parity bits of the original key
-    vector<unsigned char> key_56bit = DropParityBit(key);
-
-    // Perform permutation on the new 56-bit key
-    key_56bit = PermutedChoice1(key_56bit);
+    // Perform permutation on the 64-bit key
+    // to get a permutated 56-bit key
+    auto key_56bit = PermutedChoice1(key);
 
     // Split the 56-bit key into 2 halves
     vector<unsigned char> prev_lefthalf_key = Split(key_56bit, 0, 28);
     vector<unsigned char> prev_righthalf_key = Split(key_56bit, 28, 28);
     vector<unsigned char> this_lefthalf_key, this_righthalf_key;
 
+    // A loop to generate 16 round keys
     for (int i = 0; i < 16; ++i)
     {
+        // Circularly shift left the left half key block
         this_lefthalf_key = CircularLeftShift(prev_lefthalf_key, i);
+        // Circularly shift left the right half key block
         this_righthalf_key = CircularLeftShift(prev_righthalf_key, i);
+        // Concatenate the 2 halves
         round_keys[i] = Concate(this_lefthalf_key, this_righthalf_key);
+        auto concate_key = Concate(this_lefthalf_key, this_righthalf_key);
+        // Perform choice2 permutation on the combined block to yield the round key
         round_keys[i] = PermutedChoice2(round_keys[i]);
 
+        // Setup for the next iteration
         prev_lefthalf_key = this_lefthalf_key;
         prev_righthalf_key = this_righthalf_key;
     }
@@ -397,6 +428,8 @@ vector<vector<unsigned char>> CalculateRoundKeys(vector<unsigned char> key)
     return round_keys;
 }
 
+// Add NULL padding to the block
+// until its size is a product of 64
 vector<unsigned char> AddPadding(vector<unsigned char> block)
 {
     while (block.size() % 64 > 0)
@@ -406,34 +439,65 @@ vector<unsigned char> AddPadding(vector<unsigned char> block)
     return block;
 }
 
+// Remove NULL paddings from the block
+vector<unsigned char> RemovePadding(vector<unsigned char> block)
+{
+    vector<unsigned char> last_byte = Split(block, block.size() - 8, 8);
+    while (ConvertBinToDec(last_byte) == 0)
+    {
+        block = Split(block, 0, block.size() - 8);
+        last_byte = Split(block, block.size() - 8, 8);
+    }
+    return block;
+}
+
 vector<unsigned char> Encrypt(string plaintext, vector<unsigned char> &key)
 {
+    // Convert the plaintext string to a plaintext block
     vector<unsigned char> plainblock = ConvertStringToBin(plaintext);
-    plainblock = AddPadding(plainblock);
     vector<unsigned char> cipherblock;
+
+    // Add paddings if necessary
+    plainblock = AddPadding(plainblock);
+
+    // Generate key
     key.clear();
     key = GenerateKeyRandomly();
 
+    // Generate round keys
     vector<vector<unsigned char>> round_keys = CalculateRoundKeys(key);
 
+    // Perform initial permutation on the plain block
     plainblock = IniatialPermutate(plainblock);
+
+    // Split the plain block into halves
     vector<unsigned char> prev_left_block = Split(plainblock, 0, 32);
     vector<unsigned char> prev_right_block = Split(plainblock, 32, 32);
     vector<unsigned char> right_block;
 
     for (int i = 0; i < 16; ++i)
     {
+        // Expand the 32-bit right_block to a 48-bit block
         right_block = Expand(prev_right_block);
+        // XOR the expanded right_block with the round key
         right_block = XOR(right_block, round_keys[i]);
+        // Substitute the previous resulting block using Sboxes
+        // The resulting block has the size of 32 bits
         right_block = SubstituteWithSBox(right_block);
+        // Permutate the 32-bit blocks from the previous operation
         right_block = PermutateP(right_block);
-        right_block = XOR(right_block, prev_left_block);
+        // XOR the permutated block with the left block
+        prev_left_block = XOR(right_block, prev_left_block);
 
-        prev_right_block = prev_left_block;
-        prev_left_block = right_block;
+        // Swap the 2 half block for the next iteration
+        right_block = prev_left_block;
+        prev_left_block = prev_right_block;
     }
 
-    cipherblock = Concate(prev_left_block, prev_right_block);
+    // After finishing 16 iterations,
+    // concatenate 2 halves and perform final permutation
+    // 2.5 R[16]L[16] not L[16]R[16]
+    cipherblock = Concate(prev_right_block, prev_left_block);
     cipherblock = InverseInitialPermutate(cipherblock);
     return cipherblock;
 }
@@ -460,8 +524,9 @@ vector<unsigned char> Decrypt(vector<unsigned char> cipherblock, const vector<un
         prev_left_block = right_block;
     }
 
-    plainblock = Concate(prev_left_block, prev_right_block);
+    plainblock = Concate(prev_right_block, prev_left_block);
     plainblock = InverseInitialPermutate(plainblock);
+    plainblock = RemovePadding(plainblock);
     return plainblock;
 }
 
