@@ -44,10 +44,11 @@ using CryptoPP::DES;
 using CryptoPP::AES;
 
 #include "cryptopp/modes.h"
+using CryptoPP::CBC_CTS_Mode;
 using CryptoPP::CBC_Mode;
 using CryptoPP::CFB_Mode;
-using CryptoPP::ECB_Mode;
 using CryptoPP::CTR_Mode;
+using CryptoPP::ECB_Mode;
 using CryptoPP::OFB_Mode;
 
 #include "cryptopp/secblock.h"
@@ -389,6 +390,7 @@ int SelectMode()
 	wcout << L"(3) CFB\n";
 	wcout << L"(4) OFB\n";
 	wcout << L"(5) CTR\n";
+	wcout << L"(6) CBC_CTS\n";
 	wcout << L"> ";
 
 	try
@@ -396,7 +398,7 @@ int SelectMode()
 		wcin >> mode;
 
 		// if mode is of type 'int' but not within the valid range
-		if (mode < 1 || mode > 5)
+		if (mode < 1 || mode > 6)
 			return -1;
 
 		// otherwise
@@ -486,6 +488,9 @@ int main(int argc, char *argv[])
 		case 5:
 			etime = LoopingIV<CTR_Mode<DES>::Encryption, CTR_Mode<DES>::Decryption>(prng, *key, iv, plaintext, ciphertext, recoveredtext);
 			break;
+		case 6:
+			etime = LoopingIV<CBC_CTS_Mode<DES>::Encryption, CBC_CTS_Mode<DES>::Decryption>(prng, *key, iv, plaintext, ciphertext, recoveredtext);
+			break;
 		default:
 			wcout << L"'Mode of operation' không hợp lệ!\n";
 			valid = false;
@@ -514,6 +519,9 @@ int main(int argc, char *argv[])
 			break;
 		case 5:
 			etime = LoopingIV<CTR_Mode<AES>::Encryption, CTR_Mode<AES>::Decryption>(prng, *key, iv, plaintext, ciphertext, recoveredtext);
+			break;
+		case 6:
+			etime = LoopingIV<CBC_CTS_Mode<AES>::Encryption, CBC_CTS_Mode<AES>::Decryption>(prng, *key, iv, plaintext, ciphertext, recoveredtext);
 			break;
 		default:
 			wcout << L"'Mode of operation' không hợp lệ!\n";
