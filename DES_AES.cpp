@@ -57,7 +57,7 @@ using CryptoPP::SecByteBlock;
 #define N_ITER 10000
 
 // Referece:
-//https://stackoverflow.com/questions/4804298/how-to-convert-wstring-into-string
+// https://stackoverflow.com/questions/4804298/how-to-convert-wstring-into-string
 // Convert string to wstring
 wstring s2ws(const std::string &str)
 {
