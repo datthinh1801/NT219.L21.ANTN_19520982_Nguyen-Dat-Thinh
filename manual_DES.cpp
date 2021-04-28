@@ -462,80 +462,93 @@ vector<unsigned char> RemovePadding(vector<unsigned char> block)
 string Encrypt(string plaintext, vector<unsigned char> &key)
 {
     // Convert the plaintext string to a plaintext block
-    vector<unsigned char> plainblock = ConvertStringToBin(plaintext);
+    vector<unsigned char> original_plainblock = ConvertStringToBin(plaintext);
     vector<unsigned char> cipherblock;
+    string ciphertext = "";
 
     // Add paddings if necessary
-    plainblock = AddPadding(plainblock);
+    original_plainblock = AddPadding(original_plainblock);
 
     // Generate a 64-bit key
     key.clear();
     key = GenerateKeyRandomly();
     vector<unsigned char> permuted_key = PermutedChoice1(key);
+
+    // Permuated choice 1 on the key, which yields a 56-bit key
     permuted_key = PermutedChoice1(key);
 
-    // Calculate 16 round keys
+    // Calculate 16 round keys from the 56-bit key
     vector<vector<unsigned char>> round_keys = CalculateRoundKeys(permuted_key);
 
-    // Perform initial permutation on the plain block
-    // The result is a 64-bit block
-    plainblock = IniatialPermutate(plainblock);
-
-    // Split the plain block into halves with each has 32 bits
-    vector<unsigned char> prev_left_block = Split(plainblock, 0, 32);
-    vector<unsigned char> prev_right_block = Split(plainblock, 32, 32);
-    vector<unsigned char> right_block;
-
-    // 16 iterations
-    for (int i = 0; i < 16; ++i)
+    // Loop through each 64-bit block of the original plainblock
+    for (int b = 0; b < original_plainblock.size(); b += 64)
     {
-        // Perform the round function on the right block of the previous round
-        right_block = RoundFunction(prev_right_block, round_keys[i]);
-        // XOR the resulting block from the round function with the left block
-        prev_left_block = XOR(right_block, prev_left_block);
+        // Perform initial permutation on the plain block
+        // The result is a 64-bit block
+        vector<unsigned char> plainblock = Split(original_plainblock, b, 64);
+        plainblock = IniatialPermutate(plainblock);
 
-        // Swap the 2 half block for the next iteration
-        swap(prev_left_block, prev_right_block);
+        // Split the plain block into halves with each has 32 bits
+        vector<unsigned char> prev_left_block = Split(plainblock, 0, 32);
+        vector<unsigned char> prev_right_block = Split(plainblock, 32, 32);
+        vector<unsigned char> right_block;
+
+        // 16 iterations
+        for (int i = 0; i < 16; ++i)
+        {
+            // Perform the round function on the right block of the previous round
+            right_block = RoundFunction(prev_right_block, round_keys[i]);
+            // XOR the resulting block from the round function with the left block
+            prev_left_block = XOR(right_block, prev_left_block);
+
+            // Swap the 2 half block for the next iteration
+            swap(prev_left_block, prev_right_block);
+        }
+
+        // After finishing 16 iterations,
+        // concatenate 2 halves and perform final permutation
+        // 2.5 R[16]L[16] not L[16]R[16]
+        cipherblock = Concate(prev_right_block, prev_left_block);
+        cipherblock = InverseInitialPermutate(cipherblock);
+        ciphertext += ConvertBinToString(cipherblock);
     }
-
-    // After finishing 16 iterations,
-    // concatenate 2 halves and perform final permutation
-    // 2.5 R[16]L[16] not L[16]R[16]
-    cipherblock = Concate(prev_right_block, prev_left_block);
-    cipherblock = InverseInitialPermutate(cipherblock);
-
-    string ciphertext = ConvertBinToString(cipherblock);
     return ciphertext;
 }
 
 string Decrypt(string ciphertext, const vector<unsigned char> &key)
 {
     // Initialization
-    vector<unsigned char> cipherblock = ConvertStringToBin(ciphertext);
+    vector<unsigned char> original_cipherblock = ConvertStringToBin(ciphertext);
     vector<unsigned char> plainblock;
+    string plaintext = "";
 
     // Key routine
     vector<unsigned char> permuted_key = PermutedChoice1(key);
     vector<vector<unsigned char>> round_keys = CalculateRoundKeys(permuted_key);
 
-    // Decryption routine
-    cipherblock = IniatialPermutate(cipherblock);
-    vector<unsigned char> prev_left_block = Split(cipherblock, 0, 32);
-    vector<unsigned char> prev_right_block = Split(cipherblock, 32, 32);
-    vector<unsigned char> right_block;
-
-    for (int i = 15; i >= 0; --i)
+    for (int b = 0; b < original_cipherblock.size(); b += 64)
     {
-        right_block = RoundFunction(prev_right_block, round_keys[i]);
-        prev_left_block = XOR(right_block, prev_left_block);
-        swap(prev_left_block, prev_right_block);
+        // Decryption routine
+        vector<unsigned char> cipherblock = Split(original_cipherblock, b, 64);
+        cipherblock = IniatialPermutate(cipherblock);
+        vector<unsigned char> prev_left_block = Split(cipherblock, 0, 32);
+        vector<unsigned char> prev_right_block = Split(cipherblock, 32, 32);
+        vector<unsigned char> right_block;
+
+        for (int i = 15; i >= 0; --i)
+        {
+            right_block = RoundFunction(prev_right_block, round_keys[i]);
+            prev_left_block = XOR(right_block, prev_left_block);
+            swap(prev_left_block, prev_right_block);
+        }
+
+        plainblock = Concate(prev_right_block, prev_left_block);
+        plainblock = InverseInitialPermutate(plainblock);
+        plainblock = RemovePadding(plainblock);
+
+        plaintext += ConvertBinToString(plainblock);
     }
 
-    plainblock = Concate(prev_right_block, prev_left_block);
-    plainblock = InverseInitialPermutate(plainblock);
-    plainblock = RemovePadding(plainblock);
-
-    string plaintext = ConvertBinToString(plainblock);
     return plaintext;
 }
 
@@ -544,10 +557,13 @@ int main()
     // Seed the random function
     srand(time(0));
 
-    string plaintext = "Hello";
+    string plaintext;
+    cout << "Plaintext: ";
+    getline(cin, plaintext);
     vector<unsigned char> key;
     string ciphertext = Encrypt(plaintext, key);
+    cout << "Ciphertext: " << ciphertext << endl;
     string recoveredtext = Decrypt(ciphertext, key);
-    cout << recoveredtext << endl;
+    cout << "Recovered: " << recoveredtext << endl;
     return 0;
 }
