@@ -1,6 +1,6 @@
 // Reference:
-//http://web.mit.edu/cfields/info/des/DEShowto.txt
-//https://youtu.be/Mz3JPze3E94
+// http://web.mit.edu/cfields/info/des/DEShowto.txt
+// https://youtu.be/Mz3JPze3E94
 #include <iostream>
 #include <cstdlib>
 #include <time.h>
@@ -128,7 +128,7 @@ const unsigned char shift_routine[16] = {1, 1, 2, 2, 2, 2, 2, 2, 1, 2, 2, 2, 2, 
 END CONSTANT DECLARATION
 */
 
-void printBits(vector<unsigned char> block)
+void printBits(const vector<unsigned char> &block)
 {
     for (int i = 0; i < block.size(); ++i)
     {
@@ -139,7 +139,7 @@ void printBits(vector<unsigned char> block)
 
 // Extract `len` bits from the block
 // Starting from `start`
-vector<unsigned char> Split(vector<unsigned char> block, unsigned char start, unsigned char len)
+vector<unsigned char> Split(const vector<unsigned char> &block, unsigned char start, unsigned char len)
 {
     vector<unsigned char> sub_bits(len);
     for (int i = 0; i < len; ++i)
@@ -164,7 +164,7 @@ vector<unsigned char> ConvertDecToBin(unsigned char value, unsigned char len)
 }
 
 // Convert a vector representing bits to an integer
-unsigned char ConvertBinToDec(vector<unsigned char> block)
+unsigned char ConvertBinToDec(const vector<unsigned char> &block)
 {
     unsigned char result = 0;
     for (int i = 0; i < block.size(); ++i)
@@ -175,7 +175,7 @@ unsigned char ConvertBinToDec(vector<unsigned char> block)
 }
 
 // Convert a string to a vector representing bits
-vector<unsigned char> ConvertStringToBin(string str)
+vector<unsigned char> ConvertStringToBin(const string &str)
 {
     vector<unsigned char> result;
     for (int i = 0; i < str.length(); ++i)
@@ -191,7 +191,7 @@ vector<unsigned char> ConvertStringToBin(string str)
 }
 
 // Convert a vector representing bits to a string
-string ConvertBinToString(vector<unsigned char> block)
+string ConvertBinToString(const vector<unsigned char> &block)
 {
     string result = "";
     for (int i = 0; i < block.size(); i += 8)
@@ -243,7 +243,7 @@ vector<unsigned char> DropParityBit(vector<unsigned char> block)
 // Perform the first permutation on the key
 // Input is a 64-bit key block
 // Output is a 56-bit key block
-vector<unsigned char> PermutedChoice1(vector<unsigned char> block)
+vector<unsigned char> PermutedChoice1(const vector<unsigned char> &block)
 {
     vector<unsigned char> permuted_key(56);
     for (int i = 0; i < 56; ++i)
@@ -254,7 +254,7 @@ vector<unsigned char> PermutedChoice1(vector<unsigned char> block)
 }
 
 // Circular left shift the block
-vector<unsigned char> CircularLeftShift(vector<unsigned char> block, unsigned char round)
+vector<unsigned char> &CircularLeftShift(vector<unsigned char> &block, unsigned char round)
 {
     for (int i = 0; i < shift_routine[round]; ++i)
     {
@@ -266,7 +266,7 @@ vector<unsigned char> CircularLeftShift(vector<unsigned char> block, unsigned ch
 
 // Concate 2 blocks into a single block
 // block1|block2
-vector<unsigned char> Concate(vector<unsigned char> block1, vector<unsigned char> block2)
+vector<unsigned char> Concate(const vector<unsigned char> &block1, const vector<unsigned char> &block2)
 {
     vector<unsigned char> block3(block1);
     for (int i = 0; i < block2.size(); ++i)
@@ -279,7 +279,7 @@ vector<unsigned char> Concate(vector<unsigned char> block1, vector<unsigned char
 // Perform the permutation choice 2 on the block
 // Input is a 56-bit block
 // Output is a permutated 48-bit block
-vector<unsigned char> PermutedChoice2(vector<unsigned char> block)
+vector<unsigned char> PermutedChoice2(const vector<unsigned char> &block)
 {
     vector<unsigned char> result(48);
     for (int i = 0; i < 48; ++i)
@@ -292,7 +292,7 @@ vector<unsigned char> PermutedChoice2(vector<unsigned char> block)
 // Perform initial permutation on the block.
 // Input is a 64-bit block.
 // Output is a 64-bit block.
-vector<unsigned char> IniatialPermutate(vector<unsigned char> block)
+vector<unsigned char> IniatialPermutate(const vector<unsigned char> &block)
 {
     vector<unsigned char> result(64);
     for (int i = 0; i < 64; ++i)
@@ -305,7 +305,7 @@ vector<unsigned char> IniatialPermutate(vector<unsigned char> block)
 // Perform expansion on the block.
 // Input is a 32-bit block.
 // Output is a 48-bit block.
-vector<unsigned char> Expand(vector<unsigned char> block)
+vector<unsigned char> Expand(const vector<unsigned char> &block)
 {
     vector<unsigned char> result(48);
     for (int i = 0; i < 48; ++i)
@@ -318,7 +318,7 @@ vector<unsigned char> Expand(vector<unsigned char> block)
 // Perform Exclusive-or between block1 and block2.
 // Inputs are 2 same-size blocks.
 // Output is a XORed block with the same size as inputs.
-vector<unsigned char> XOR(vector<unsigned char> block1, vector<unsigned char> block2)
+vector<unsigned char> XOR(const vector<unsigned char> &block1, const vector<unsigned char> &block2)
 {
     vector<unsigned char> result(block1.size());
     for (int i = 0; i < result.size(); ++i)
@@ -331,7 +331,7 @@ vector<unsigned char> XOR(vector<unsigned char> block1, vector<unsigned char> bl
 // Perform substitution on the block.
 // Input is a 48-bit block.
 // Output is a 32-bit block.
-vector<unsigned char> SubstituteWithSBox(vector<unsigned char> block)
+vector<unsigned char> SubstituteWithSBox(const vector<unsigned char> &block)
 {
     vector<unsigned char> result(32);
 
@@ -368,7 +368,7 @@ vector<unsigned char> SubstituteWithSBox(vector<unsigned char> block)
 
 // Input is a 32-bit block
 // Output is a 32-bit block
-vector<unsigned char> PermutateP(vector<unsigned char> block)
+vector<unsigned char> PermutateP(const vector<unsigned char> &block)
 {
     vector<unsigned char> result(32);
     for (int i = 0; i < 32; ++i)
@@ -381,7 +381,7 @@ vector<unsigned char> PermutateP(vector<unsigned char> block)
 // Perform the inverse initial permutation
 // Input is a 64-bit block
 // Output is a 64-bit block
-vector<unsigned char> InverseInitialPermutate(vector<unsigned char> block)
+vector<unsigned char> InverseInitialPermutate(const vector<unsigned char> &block)
 {
     vector<unsigned char> result(64);
     for (int i = 0; i < 64; ++i)
@@ -394,7 +394,7 @@ vector<unsigned char> InverseInitialPermutate(vector<unsigned char> block)
 // Perform the round function
 // Inputs are 1 32-bit block (half of plainblock) and 1 48-bit block (key)
 // Output is a 32-bit block
-vector<unsigned char> RoundFunction(vector<unsigned char> right_block, vector<unsigned char> round_key)
+vector<unsigned char> &RoundFunction(vector<unsigned char> &right_block, const vector<unsigned char> &round_key)
 {
     // Expand the 32-bit right_block to a 48-bit block
     right_block = Expand(right_block);
@@ -412,7 +412,7 @@ vector<unsigned char> RoundFunction(vector<unsigned char> right_block, vector<un
 // Calculate 16 round keys from the original key
 // Input is a 64-bit key block
 // Outputs are 16 48-bit key blocks
-vector<vector<unsigned char>> CalculateRoundKeys(vector<unsigned char> key)
+vector<vector<unsigned char>> CalculateRoundKeys(const vector<unsigned char> &key)
 {
     vector<vector<unsigned char>> round_keys(16);
 
@@ -438,7 +438,7 @@ vector<vector<unsigned char>> CalculateRoundKeys(vector<unsigned char> key)
 
 // Add NULL padding to the block
 // until its size is a product of 64
-vector<unsigned char> AddPadding(vector<unsigned char> block)
+vector<unsigned char> &AddPadding(vector<unsigned char> &block)
 {
     while (block.size() % 64 > 0)
     {
@@ -448,7 +448,7 @@ vector<unsigned char> AddPadding(vector<unsigned char> block)
 }
 
 // Remove NULL paddings from the block
-vector<unsigned char> RemovePadding(vector<unsigned char> block)
+vector<unsigned char> &RemovePadding(vector<unsigned char> &block)
 {
     vector<unsigned char> last_byte = Split(block, block.size() - 8, 8);
     while (ConvertBinToDec(last_byte) == 0)
@@ -459,8 +459,9 @@ vector<unsigned char> RemovePadding(vector<unsigned char> block)
     return block;
 }
 
-string Encrypt(string plaintext, vector<unsigned char> &key)
+string Encrypt(const string &plaintext, vector<unsigned char> &key)
 {
+    int start = clock();
     // Convert the plaintext string to a plaintext block
     vector<unsigned char> original_plainblock = ConvertStringToBin(plaintext);
     vector<unsigned char> cipherblock;
@@ -483,9 +484,10 @@ string Encrypt(string plaintext, vector<unsigned char> &key)
     // Loop through each 64-bit block of the original plainblock
     for (int b = 0; b < original_plainblock.size(); b += 64)
     {
-        // Perform initial permutation on the plain block
-        // The result is a 64-bit block
+        // Extract a 64-bit block
         vector<unsigned char> plainblock = Split(original_plainblock, b, 64);
+        // Perform initial permutation on the plain block.
+        // The result is a 64-bit block
         plainblock = IniatialPermutate(plainblock);
 
         // Split the plain block into halves with each has 32 bits
@@ -493,30 +495,35 @@ string Encrypt(string plaintext, vector<unsigned char> &key)
         vector<unsigned char> prev_right_block = Split(plainblock, 32, 32);
         vector<unsigned char> right_block;
 
-        // 16 iterations
+        // 16 rounds of the algorithm
         for (int i = 0; i < 16; ++i)
         {
-            // Perform the round function on the right block of the previous round
-            right_block = RoundFunction(prev_right_block, round_keys[i]);
-            // XOR the resulting block from the round function with the left block
+            // Perform the round function on the right block from the previous round
+            right_block = prev_right_block;
+            right_block = RoundFunction(right_block, round_keys[i]);
+            // XOR the resulting block from the round function with the left block from the previous round
             prev_left_block = XOR(right_block, prev_left_block);
 
-            // Swap the 2 half block for the next iteration
+            // Swap the 2 half block for the next round
             swap(prev_left_block, prev_right_block);
         }
 
         // After finishing 16 iterations,
         // concatenate 2 halves and perform final permutation
-        // 2.5 R[16]L[16] not L[16]R[16]
+        // R[16]L[16] not L[16]R[16]
         cipherblock = Concate(prev_right_block, prev_left_block);
         cipherblock = InverseInitialPermutate(cipherblock);
         ciphertext += ConvertBinToString(cipherblock);
     }
+
+    int end = clock();
+    cout << "Encryption time: " << double(end - start) / CLOCKS_PER_SEC * 1000 << " ms" << endl;
     return ciphertext;
 }
 
-string Decrypt(string ciphertext, const vector<unsigned char> &key)
+string Decrypt(const string &ciphertext, const vector<unsigned char> &key)
 {
+    int start = clock();
     // Initialization
     vector<unsigned char> original_cipherblock = ConvertStringToBin(ciphertext);
     vector<unsigned char> plainblock;
@@ -526,6 +533,7 @@ string Decrypt(string ciphertext, const vector<unsigned char> &key)
     vector<unsigned char> permuted_key = PermutedChoice1(key);
     vector<vector<unsigned char>> round_keys = CalculateRoundKeys(permuted_key);
 
+    // Loop through each 64-bit block of the original cipherblock
     for (int b = 0; b < original_cipherblock.size(); b += 64)
     {
         // Decryption routine
@@ -535,20 +543,33 @@ string Decrypt(string ciphertext, const vector<unsigned char> &key)
         vector<unsigned char> prev_right_block = Split(cipherblock, 32, 32);
         vector<unsigned char> right_block;
 
+        // 16 rounds of the algorithm
         for (int i = 15; i >= 0; --i)
         {
-            right_block = RoundFunction(prev_right_block, round_keys[i]);
+            // Perform the round function on the right block from the previous round
+            right_block = prev_right_block;
+            right_block = RoundFunction(right_block, round_keys[i]);
+            // XOR the resulting block from the round function with the left block from the previous round
             prev_left_block = XOR(right_block, prev_left_block);
+
+            // Swap the 2 halves for the next round
             swap(prev_left_block, prev_right_block);
         }
 
         plainblock = Concate(prev_right_block, prev_left_block);
         plainblock = InverseInitialPermutate(plainblock);
-        plainblock = RemovePadding(plainblock);
+
+        // If this is the last block,
+        // padding of the block will be stripped out (if any).
+        if (b + 64 == original_cipherblock.size())
+        {
+            plainblock = RemovePadding(plainblock);
+        }
 
         plaintext += ConvertBinToString(plainblock);
     }
-
+    int end = clock();
+    cout << "Decryption time: " << double(end - start) / CLOCKS_PER_SEC * 1000 << " ms" << endl;
     return plaintext;
 }
 
