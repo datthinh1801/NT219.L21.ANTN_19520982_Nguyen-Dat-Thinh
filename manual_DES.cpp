@@ -178,12 +178,14 @@ unsigned char ConvertBinToDec(const vector<unsigned char> &block)
 vector<unsigned char> ConvertStringToBin(const string &str)
 {
     vector<unsigned char> result;
-    for (int i = 0; i < str.length(); ++i)
+
+    // Use for each to support longer string
+    for (unsigned char c : str)
     {
-        vector<unsigned char> single_char = ConvertDecToBin(str[i], 8);
-        for (int j = 0; j < 8; ++j)
+        vector<unsigned char> single_char = ConvertDecToBin(c, 8);
+        for (int i = 0; i < 8; ++i)
         {
-            result.push_back(single_char[j]);
+            result.push_back(single_char[i]);
         }
     }
 
@@ -194,10 +196,19 @@ vector<unsigned char> ConvertStringToBin(const string &str)
 string ConvertBinToString(const vector<unsigned char> &block)
 {
     string result = "";
-    for (int i = 0; i < block.size(); i += 8)
+    vector<unsigned char> one_byte;
+
+    // Use for each to support longer string
+    for (unsigned char bit : block)
     {
-        unsigned char ascii_value = ConvertBinToDec(Split(block, i, 8));
-        result += ascii_value;
+        one_byte.push_back(bit);
+
+        if (one_byte.size() == 8)
+        {
+            unsigned char ascii_value = ConvertBinToDec(one_byte);
+            result += ascii_value;
+            one_byte.clear();
+        }
     }
     return result;
 }
@@ -472,39 +483,45 @@ string Encrypt(const string &plaintext, vector<unsigned char> &key)
     // Calculate 16 round keys from the 56-bit key
     vector<vector<unsigned char>> round_keys = CalculateRoundKeys(permuted_key);
 
+    vector<unsigned char> plainblock;
     // Loop through each 64-bit block of the original plainblock
-    for (int b = 0; b < original_plainblock.size(); b += 64)
+    for (unsigned char bit : original_plainblock)
     {
-        // Extract a 64-bit block
-        vector<unsigned char> plainblock = Split(original_plainblock, b, 64);
-        // Perform initial permutation on the plain block.
-        // The result is a 64-bit block
-        plainblock = IniatialPermutate(plainblock);
+        plainblock.push_back(bit);
 
-        // Split the plain block into halves with each has 32 bits
-        vector<unsigned char> prev_left_block = Split(plainblock, 0, 32);
-        vector<unsigned char> prev_right_block = Split(plainblock, 32, 32);
-        vector<unsigned char> right_block;
-
-        // 16 rounds of the algorithm
-        for (int i = 0; i < 16; ++i)
+        if (plainblock.size() == 64)
         {
-            // Perform the round function on the right block from the previous round
-            right_block = prev_right_block;
-            right_block = RoundFunction(right_block, round_keys[i]);
-            // XOR the resulting block from the round function with the left block from the previous round
-            prev_left_block = XOR(right_block, prev_left_block);
+            // Perform initial permutation on the plain block.
+            // The result is a 64-bit block
+            plainblock = IniatialPermutate(plainblock);
 
-            // Swap the 2 half block for the next round
-            swap(prev_left_block, prev_right_block);
+            // Split the plain block into halves with each has 32 bits
+            vector<unsigned char> prev_left_block = Split(plainblock, 0, 32);
+            vector<unsigned char> prev_right_block = Split(plainblock, 32, 32);
+            vector<unsigned char> right_block;
+
+            // 16 rounds of the algorithm
+            for (int i = 0; i < 16; ++i)
+            {
+                // Perform the round function on the right block from the previous round
+                right_block = prev_right_block;
+                right_block = RoundFunction(right_block, round_keys[i]);
+                // XOR the resulting block from the round function with the left block from the previous round
+                prev_left_block = XOR(right_block, prev_left_block);
+
+                // Swap the 2 half block for the next round
+                swap(prev_left_block, prev_right_block);
+            }
+
+            // After finishing 16 iterations,
+            // concatenate 2 halves and perform final permutation
+            // R[16]L[16] not L[16]R[16]
+            cipherblock = Concate(prev_right_block, prev_left_block);
+            cipherblock = InverseInitialPermutate(cipherblock);
+            ciphertext += ConvertBinToString(cipherblock);
+
+            plainblock.clear();
         }
-
-        // After finishing 16 iterations,
-        // concatenate 2 halves and perform final permutation
-        // R[16]L[16] not L[16]R[16]
-        cipherblock = Concate(prev_right_block, prev_left_block);
-        cipherblock = InverseInitialPermutate(cipherblock);
-        ciphertext += ConvertBinToString(cipherblock);
     }
 
     int end = clock();
@@ -524,40 +541,39 @@ string Decrypt(const string &ciphertext, const vector<unsigned char> &key)
     vector<unsigned char> permuted_key = PermutedChoice1(key);
     vector<vector<unsigned char>> round_keys = CalculateRoundKeys(permuted_key);
 
+    vector<unsigned char> cipherblock;
     // Loop through each 64-bit block of the original cipherblock
-    for (int b = 0; b < original_cipherblock.size(); b += 64)
+    for (unsigned char bit : original_cipherblock)
     {
-        // Decryption routine
-        vector<unsigned char> cipherblock = Split(original_cipherblock, b, 64);
-        cipherblock = IniatialPermutate(cipherblock);
-        vector<unsigned char> prev_left_block = Split(cipherblock, 0, 32);
-        vector<unsigned char> prev_right_block = Split(cipherblock, 32, 32);
-        vector<unsigned char> right_block;
+        cipherblock.push_back(bit);
 
-        // 16 rounds of the algorithm
-        for (int i = 15; i >= 0; --i)
+        if (cipherblock.size() == 64)
         {
-            // Perform the round function on the right block from the previous round
-            right_block = prev_right_block;
-            right_block = RoundFunction(right_block, round_keys[i]);
-            // XOR the resulting block from the round function with the left block from the previous round
-            prev_left_block = XOR(right_block, prev_left_block);
+            // Decryption routine
+            cipherblock = IniatialPermutate(cipherblock);
+            vector<unsigned char> prev_left_block = Split(cipherblock, 0, 32);
+            vector<unsigned char> prev_right_block = Split(cipherblock, 32, 32);
+            vector<unsigned char> right_block;
 
-            // Swap the 2 halves for the next round
-            swap(prev_left_block, prev_right_block);
+            // 16 rounds of the algorithm
+            for (int i = 15; i >= 0; --i)
+            {
+                // Perform the round function on the right block from the previous round
+                right_block = prev_right_block;
+                right_block = RoundFunction(right_block, round_keys[i]);
+                // XOR the resulting block from the round function with the left block from the previous round
+                prev_left_block = XOR(right_block, prev_left_block);
+
+                // Swap the 2 halves for the next round
+                swap(prev_left_block, prev_right_block);
+            }
+
+            plainblock = Concate(prev_right_block, prev_left_block);
+            plainblock = InverseInitialPermutate(plainblock);
+            plaintext += ConvertBinToString(plainblock);
+
+            cipherblock.clear();
         }
-
-        plainblock = Concate(prev_right_block, prev_left_block);
-        plainblock = InverseInitialPermutate(plainblock);
-
-        // If this is the last block,
-        // padding of the block will be stripped out (if any).
-        if (b + 64 == original_cipherblock.size())
-        {
-            plainblock = RemovePadding(plainblock);
-        }
-
-        plaintext += ConvertBinToString(plainblock);
     }
     int end = clock();
     cout << "Decryption time: " << double(end - start) / CLOCKS_PER_SEC * 1000 << " ms" << endl;
