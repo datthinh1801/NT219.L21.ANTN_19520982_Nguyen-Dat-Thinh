@@ -139,7 +139,7 @@ void printBits(const vector<unsigned char> &block)
 
 // Extract `len` bits from the block
 // Starting from `start`
-vector<unsigned char> Split(const vector<unsigned char> &block, unsigned char start, unsigned char len)
+vector<unsigned char> Split(const vector<unsigned char> &block, unsigned int start, unsigned char len)
 {
     vector<unsigned char> sub_bits(len);
     for (int i = 0; i < len; ++i)
@@ -180,7 +180,7 @@ vector<unsigned char> ConvertStringToBin(const string &str)
     vector<unsigned char> result;
     for (int i = 0; i < str.length(); ++i)
     {
-        vector<unsigned char> single_char = ConvertDecToBin(int(str[i]), 8);
+        vector<unsigned char> single_char = ConvertDecToBin(str[i], 8);
         for (int j = 0; j < 8; ++j)
         {
             result.push_back(single_char[j]);
@@ -225,20 +225,6 @@ vector<unsigned char> GenerateKeyRandomly()
 
     return key;
 }
-
-// Drop parity bits
-/*
-vector<unsigned char> DropParityBit(vector<unsigned char> block)
-{
-    // Remove bit from tail to head in order not to confuse the offset while removing
-    for (int i = 63; i >= 0; i -= 8)
-    {
-        block.erase(block.begin() + i);
-    }
-
-    return block;
-}
-*/
 
 // Perform the first permutation on the key
 // Input is a 64-bit key block
@@ -450,10 +436,15 @@ vector<unsigned char> &AddPadding(vector<unsigned char> &block)
 // Remove NULL paddings from the block
 vector<unsigned char> &RemovePadding(vector<unsigned char> &block)
 {
+    // Extract the last byte
     vector<unsigned char> last_byte = Split(block, block.size() - 8, 8);
+    // While the last byte is NULL,
+    // removes it
     while (ConvertBinToDec(last_byte) == 0)
     {
+        // Shrink the block by 8-bit
         block = Split(block, 0, block.size() - 8);
+        // Extract the next last byte
         last_byte = Split(block, block.size() - 8, 8);
     }
     return block;
