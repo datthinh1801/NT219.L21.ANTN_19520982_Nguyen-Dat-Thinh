@@ -51,25 +51,12 @@ vector<vector<unsigned char>> ConvertStringToBlock(string str)
 string ConvertBlockToString(const vector<vector<unsigned char>> &block)
 {
     string result = "";
-    int i = 0;
-    int done = 0;
-
-    while (true)
+    for (int i = 0; i < block[0].size(); ++i)
     {
-        if (block[i].size() > 0)
+        for (int j = 0; j < 4; ++j)
         {
-            result += block[i].front();
-            result.erase(result.begin());
+            result += block[j][i];
         }
-        else
-        {
-            done += 1;
-            if (done == 4)
-            {
-                break;
-            }
-        }
-        i = (i + 1) % 4;
     }
     return result;
 }
