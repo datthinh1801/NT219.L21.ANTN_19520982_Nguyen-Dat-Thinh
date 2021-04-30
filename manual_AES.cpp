@@ -1,5 +1,7 @@
 #include <iostream>
 #include <vector>
+#include <time.h>
+#include <string>
 #include "manual_AES_constant.hpp"
 using namespace std;
 
@@ -21,6 +23,57 @@ const unsigned char const_inv_mul_mat[4][4] = {
     0x0d, 0x09, 0x0e, 0x0b,
     0x0b, 0x0d, 0x09, 0x0e};
 
+const unsigned char round_constants[4][10] = {
+    0x1, 0x2, 0x4, 0x8, 0x10, 0x20, 0x40, 0x80, 0x1b, 0x36,
+    0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0,
+    0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0,
+    0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0};
+
+// Convert a string to a 4xN matrix represent its hexadecimal values
+// The output might not be of 4xN in shape
+// Invoke the AddPadding function to mitigate this.
+vector<vector<unsigned char>> ConvertStringToBlock(string str)
+{
+    vector<vector<unsigned char>> block(4);
+    int cur_row = 0;
+
+    for (unsigned char c : str)
+    {
+        block[cur_row].push_back(c);
+        cur_row = (cur_row + 1) % 4;
+    }
+
+    return block;
+}
+
+// Convert a matrix of hexadecimal values to a string
+// The input block should be stripped paddings.
+string ConvertBlockToString(const vector<vector<unsigned char>> &block)
+{
+    string result = "";
+    int i = 0;
+    int done = 0;
+
+    while (true)
+    {
+        if (block[i].size() > 0)
+        {
+            result += block[i].front();
+            result.erase(result.begin());
+        }
+        else
+        {
+            done += 1;
+            if (done == 4)
+            {
+                break;
+            }
+        }
+        i = (i + 1) % 4;
+    }
+    return result;
+}
+
 void PrintMatrix(const vector<vector<unsigned char>> &block)
 {
     for (int i = 0; i < block.size(); ++i)
@@ -33,7 +86,9 @@ void PrintMatrix(const vector<vector<unsigned char>> &block)
     }
 }
 
-vector<vector<unsigned char>> &CircularShiftCol(vector<vector<unsigned char>> &block, unsigned char col)
+// Rotate a word circularly
+// This word is the first word of the block which is passed to the function
+vector<vector<unsigned char>> &RotWord(vector<vector<unsigned char>> &block)
 {
     unsigned char carrier;
     for (int row = 0; row < block.size(); ++row)
@@ -42,19 +97,20 @@ vector<vector<unsigned char>> &CircularShiftCol(vector<vector<unsigned char>> &b
         {
             if (row == 0)
             {
-                carrier = block[row][col];
+                carrier = block[row][0];
             }
 
-            block[row][col] = block[row + 1][col];
+            block[row][0] = block[row + 1][0];
         }
         else
         {
-            block[row][col] = carrier;
+            block[row][0] = carrier;
         }
     }
     return block;
 }
 
+// Shift a row circularly for `shift_amt` times
 vector<unsigned char> &CircularShiftRow(vector<unsigned char> &row, unsigned char shift_amt)
 {
     while (shift_amt--)
@@ -65,6 +121,8 @@ vector<unsigned char> &CircularShiftRow(vector<unsigned char> &row, unsigned cha
     return row;
 }
 
+// Multiply 2 bytes on the GF(256)
+// This is a helper function for the readability purpose
 unsigned char GFMul(unsigned char w1, unsigned char w2)
 {
     return gmultab[w1][w2];
@@ -97,6 +155,84 @@ unsigned char GetFirst4bitsValue(unsigned char b)
 unsigned char GetLast4bitsValue(unsigned char b)
 {
     return b & 15;
+}
+
+// Randomly generate a 16-byte key
+vector<vector<unsigned char>> RandomKey()
+{
+    srand(time(0));
+
+    vector<vector<unsigned char>> key(4);
+    for (int i = 0; i < 4; ++i)
+    {
+        for (int j = 0; j < 4; ++j)
+        {
+            key[i].push_back(rand() % 256);
+        }
+    }
+    return key;
+}
+
+// Extract a 16-byte block from the block
+// The splitted block comes from the start-th word to the next 3 words of the block
+// [NOTE] The block is major-column
+vector<vector<unsigned char>> Split(const vector<vector<unsigned char>> &block, unsigned int start)
+{
+    vector<vector<unsigned char>> sub_block(4);
+    for (int j = 0; j < 4; ++j)
+    {
+        for (int i = 0; i < 4; ++i)
+        {
+            sub_block[i].push_back(block[i][start + j]);
+        }
+    }
+    return sub_block;
+}
+
+// Add NULL padding the block if its size is not of a product of 16
+vector<vector<unsigned char>> &AddPadding(vector<vector<unsigned char>> &block)
+{
+    // Add padding if there is an incomplete word
+    int max_size = max(max(block[0].size(), block[1].size()), max(block[2].size(), block[3].size()));
+    for (int i = 0; i < 4; ++i)
+    {
+        while (block[i].size() < max_size)
+        {
+            block[i].push_back(0);
+        }
+    }
+
+    // while the block size is not a product of 16
+    while (block[0].size() % 4 > 0)
+    {
+        // Add NULL padding
+        for (int i = 0; i < 4; ++i)
+        {
+            block[i].push_back(0x0);
+        }
+    }
+
+    return block;
+}
+
+// Remove NULL padding from the block
+vector<vector<unsigned char>> &RemovePadding(vector<vector<unsigned char>> &block)
+{
+    int bound = 3;
+    int cur_row = 3;
+    while (bound > -1)
+    {
+        if (block[cur_row].back() == 0)
+        {
+            block[cur_row].pop_back();
+        }
+        else
+        {
+            bound = cur_row - 1;
+        }
+        cur_row = ((cur_row - 1) + 4) % 4;
+    }
+    return block;
 }
 
 // Substitute bytes of the block using the S-box
@@ -194,52 +330,166 @@ vector<vector<unsigned char>> InverseMixCols(vector<vector<unsigned char>> &bloc
 }
 
 // Expand the key
-// Input is a 16-byte block (key)
-// Out put is a 44-byte block (expanded key)
-vector<vector<unsigned char>> KeyExpansion(const vector<unsigned char> &key)
+// Input is a 4-word block (key)
+// Out put is a 44-word block (expanded key)
+vector<vector<unsigned char>> KeyExpansion(const vector<vector<unsigned char>> &key)
 {
-    vector<vector<unsigned char>> expanded_key(44);
-    vector<unsigned char> temp(4);
+    // Initialize the expanded key with the first 4 words from the 16-byte key
+    vector<vector<unsigned char>> expanded_key(key);
+    vector<vector<unsigned char>> temp(4);
 
-    // Copy the first 4 words from the orignal key to the expanded key
-    // From word 0th to the 3rd word of the key
-    for (int i = 0; i < 4; ++i)
+    for (int i = 4; i < 44; ++i)
     {
-        // the word ith of the expanded key comprises of 4 bytes of the corresponding word of the 16-byte key
-        // the key is of this format:
-        // [byte1, byte2, byte3, byte4, byte5, byte6, byte7, byte8, byte9, byte10, byte11, byte12, byte13, byte14, byte15, byte16]
+        temp.clear();
+
+        // Extract the last word of the expanded_key
+        // temp = w[i - 1]
+        for (int j = 0; j < 4; ++j)
+        {
+            temp[j].push_back(expanded_key[j].back());
+        }
+
+        if (i % 4 == 0)
+        {
+            // temp = SubWord(RotWord(temp)) ^ Rcon[i / 4]
+            temp = SubstituteByte(RotWord(temp));
+            for (int j = 0; j < 4; ++j)
+            {
+                temp[j].back() ^= round_constants[j][(i / 4) - 1];
+            }
+        }
+
+        // w[i] = w[i - 4] ^ temp
+        for (int j = 0; j < 4; ++j)
+        {
+            expanded_key[j].push_back(expanded_key[j][i - 4] ^ temp[j][0]);
+        }
     }
+
+    return expanded_key;
+}
+
+vector<vector<unsigned char>> Encrypt(string plaintext, vector<vector<unsigned char>> &key)
+{
+    vector<vector<unsigned char>> cipher_block(4);
+    auto plain_block = ConvertStringToBlock(plaintext);
+
+    // Add padding
+    plain_block = AddPadding(plain_block);
+
+    // [KEY EXPANSION]
+    auto expanded_key = KeyExpansion(key);
+
+    // Loop through 4 words of the plain_block at a time
+    for (int i = 0; i < plain_block[0].size(); i += 4)
+    {
+        // Extract a 4-word block from the original block
+        auto current_state = Split(plain_block, i);
+        // Extract the round key 0
+        auto round_key_0 = Split(expanded_key, 0);
+
+        // [Initial transformation]
+        current_state = XOR(current_state, round_key_0);
+
+        // Loop through 10 rounds
+        for (int round = 1; round <= 10; ++round)
+        {
+            // [SUB BYTES]
+            current_state = SubstituteByte(current_state);
+
+            // [SHIFT ROWS]
+            current_state = ShiftRows(current_state);
+
+            // Round 10 does not have this step
+            if (round < 10)
+            {
+                // [MIX COLUMNS]
+                current_state = MixCols(current_state);
+            }
+
+            // [ADD ROUND KEY]
+            auto round_key = Split(expanded_key, round * 4);
+            current_state = XOR(current_state, round_key);
+        }
+
+        // Append the state to the overall cipher_block
+        for (int i = 0; i < 4; ++i)
+        {
+            for (int j = 0; j < 4; ++j)
+            {
+                cipher_block[i].push_back(current_state[i][j]);
+            }
+        }
+    }
+    return cipher_block;
+}
+
+string Decrypt(vector<vector<unsigned char>> cipher_block, const vector<vector<unsigned char>> &key)
+{
+    vector<vector<unsigned char>> plain_block(4);
+
+    // [KEY EXPANSION]
+    auto expanded_key = KeyExpansion(key);
+
+    // Loop through 4 words of the cipher_block at a time
+    for (int i = 0; i < cipher_block[0].size(); i += 4)
+    {
+        // Extract a 4-word block from the original block
+        auto current_state = Split(cipher_block, i);
+        // Extract the round key 0
+        auto round_key_10 = Split(expanded_key, 40);
+
+        // [Initial transformation]
+        current_state = XOR(current_state, round_key_10);
+
+        // Loop through 10 rounds
+        for (int round = 9; round >= 0; --round)
+        {
+            // [INVERSE SHIFT ROWS]
+            current_state = InverseShiftRows(current_state);
+            // [INVERSE SUB BYTES]
+            current_state = InverseSubstituteByte(current_state);
+            // [ADD ROUND KEY]
+            auto round_key = Split(expanded_key, round * 4);
+            current_state = XOR(current_state, round_key);
+
+            if (round > 0)
+            {
+                // [INVERSE MIX COLUMNS]
+                current_state = InverseMixCols(current_state);
+            }
+        }
+
+        // Append the state to the overall plain_block
+        for (int i = 0; i < 4; ++i)
+        {
+            for (int j = 0; j < 4; ++j)
+            {
+                plain_block[i].push_back(current_state[i][j]);
+            }
+        }
+    }
+    plain_block = RemovePadding(plain_block);
+    return ConvertBlockToString(plain_block);
 }
 
 int main()
 {
-    vector<vector<unsigned char>> v(4);
-    v[0].push_back(0x87);
-    v[0].push_back(0xf2);
-    v[0].push_back(0x4d);
-    v[0].push_back(0x97);
+    string plaintext;
+    std::cout << "Plaintext: ";
+    getline(cin, plaintext);
 
-    v[1].push_back(0x6e);
-    v[1].push_back(0x4c);
-    v[1].push_back(0x90);
-    v[1].push_back(0xec);
+    auto key = RandomKey();
+    std::cout << "Key:\n";
+    PrintMatrix(key);
+    std::cout << endl;
 
-    v[2].push_back(0x46);
-    v[2].push_back(0xe7);
-    v[2].push_back(0x4a);
-    v[2].push_back(0xc3);
+    auto cipher_block = Encrypt(plaintext, key);
+    std::cout << "Cipher block:\n";
+    PrintMatrix(cipher_block);
+    std::cout << endl;
 
-    v[3].push_back(0xa6);
-    v[3].push_back(0x8c);
-    v[3].push_back(0xd8);
-    v[3].push_back(0x95);
-
-    PrintMatrix(v);
-    cout << endl;
-    auto p = MixCols(v);
-    PrintMatrix(p);
-    cout << endl;
-    auto rev = InverseMixCols(p);
-    PrintMatrix(rev);
+    auto recovered_string = Decrypt(cipher_block, key);
+    std::cout << "Recovered: " << recovered_string << endl;
     return 0;
 }
