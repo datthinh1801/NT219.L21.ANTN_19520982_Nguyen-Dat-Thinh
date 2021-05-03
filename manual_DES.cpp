@@ -6,6 +6,7 @@
 #include <time.h>
 #include <string>
 #include <vector>
+#include <iomanip>
 using namespace std;
 
 /*
@@ -211,6 +212,16 @@ string ConvertBinToString(const vector<unsigned char> &block)
         }
     }
     return result;
+}
+
+void PrintHexString(const string &str)
+{
+    auto string_block = ConvertStringToBin(str);
+    for (int offset = 0; offset < string_block.size(); offset += 4)
+    {
+        cout << hex << uppercase << (unsigned int)ConvertBinToDec(Split(string_block, offset, 4));
+    }
+    cout << endl;
 }
 
 // Randomly generate a 64-bit key
@@ -463,7 +474,6 @@ vector<unsigned char> &RemovePadding(vector<unsigned char> &block)
 
 string Encrypt(const string &plaintext, vector<unsigned char> &key)
 {
-    int start = clock();
     // Convert the plaintext string to a plaintext block
     vector<unsigned char> original_plainblock = ConvertStringToBin(plaintext);
     vector<unsigned char> cipherblock;
@@ -524,14 +534,11 @@ string Encrypt(const string &plaintext, vector<unsigned char> &key)
         }
     }
 
-    int end = clock();
-    cout << "Encryption time: " << double(end - start) / CLOCKS_PER_SEC * 1000 << " ms" << endl;
     return ciphertext;
 }
 
 string Decrypt(const string &ciphertext, const vector<unsigned char> &key)
 {
-    int start = clock();
     // Initialization
     vector<unsigned char> original_cipherblock = ConvertStringToBin(ciphertext);
     vector<unsigned char> plainblock;
@@ -575,8 +582,6 @@ string Decrypt(const string &ciphertext, const vector<unsigned char> &key)
             cipherblock.clear();
         }
     }
-    int end = clock();
-    cout << "Decryption time: " << double(end - start) / CLOCKS_PER_SEC * 1000 << " ms" << endl;
     return plaintext;
 }
 
@@ -588,9 +593,12 @@ int main()
     string plaintext;
     cout << "Plaintext: ";
     getline(cin, plaintext);
+
     vector<unsigned char> key;
     string ciphertext = Encrypt(plaintext, key);
-    cout << "Ciphertext: " << ciphertext << endl;
+    cout << "Ciphertext: ";
+    PrintHexString(ciphertext);
+
     string recoveredtext = Decrypt(ciphertext, key);
     cout << "Recovered: " << recoveredtext << endl;
     return 0;
