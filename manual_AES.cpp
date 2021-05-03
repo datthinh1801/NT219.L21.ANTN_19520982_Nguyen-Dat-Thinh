@@ -2,6 +2,7 @@
 #include <vector>
 #include <time.h>
 #include <string>
+#include <iomanip>
 #include "manual_AES_constant.hpp"
 using namespace std;
 
@@ -67,7 +68,7 @@ void PrintMatrix(const vector<vector<unsigned char>> &block)
     {
         for (int j = 0; j < block[i].size(); ++j)
         {
-            cout << hex << (unsigned int)block[i][j] << " ";
+            cout << setfill('0') << setw(2) << hex << uppercase << (unsigned int)block[i][j] << " ";
         }
         cout << endl;
     }
@@ -356,7 +357,7 @@ vector<vector<unsigned char>> KeyExpansion(const vector<vector<unsigned char>> &
     return expanded_key;
 }
 
-vector<vector<unsigned char>> Encrypt(string plaintext, vector<vector<unsigned char>> &key)
+vector<vector<unsigned char>> Encrypt(string plaintext, const vector<vector<unsigned char>> &key)
 {
     vector<vector<unsigned char>> cipher_block(4);
     auto plain_block = ConvertStringToBlock(plaintext);
@@ -411,7 +412,7 @@ vector<vector<unsigned char>> Encrypt(string plaintext, vector<vector<unsigned c
     return cipher_block;
 }
 
-string Decrypt(vector<vector<unsigned char>> cipher_block, const vector<vector<unsigned char>> &key)
+string Decrypt(const vector<vector<unsigned char>> &cipher_block, const vector<vector<unsigned char>> &key)
 {
     vector<vector<unsigned char>> plain_block(4);
 
