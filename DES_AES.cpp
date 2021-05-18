@@ -473,6 +473,20 @@ int SelectKeySize()
 	}
 }
 
+CryptoPP::byte *GetKeyFromConsole(int key_size)
+{
+	CryptoPP::byte *key = SecByteBlock(key_size);
+	wstring winput_key;
+	std::getline(std::wcin, winput_key);
+
+	string input_key = ws2s(winput_key);
+	for (int i = 0; i < input_key.length() && i < sizeof(key); ++i)
+	{
+		key[i] = (unsigned int)input_key[i];
+	}
+	return key;
+}
+
 int main(int argc, char *argv[])
 {
 	// Setup for Vietnamese language support
