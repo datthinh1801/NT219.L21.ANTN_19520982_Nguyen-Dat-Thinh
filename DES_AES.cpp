@@ -35,6 +35,7 @@ using CryptoPP::HexDecoder;
 using CryptoPP::HexEncoder;
 
 #include "cryptopp/filters.h"
+using CryptoPP::Redirector;
 using CryptoPP::StreamTransformationFilter;
 using CryptoPP::StringSink;
 using CryptoPP::StringSource;
@@ -55,6 +56,10 @@ using CryptoPP::OFB_Mode;
 
 #include "cryptopp/secblock.h"
 using CryptoPP::SecByteBlock;
+
+#include "cryptopp/files.h"
+using CryptoPP::FileSink;
+using CryptoPP::FileSource;
 
 #define N_ITER 10000
 
@@ -413,7 +418,7 @@ bool GraspInputFromConsole(SecByteBlock &block, int block_size, wstring which)
 		// Convert to bytes
 		StringSource ss(input, false);
 		CryptoPP::ArraySink bytes_block(block, block_size);
-		ss.Detach(new CryptoPP::Redirector(bytes_block));
+		ss.Detach(new Redirector(bytes_block));
 		ss.Pump(block_size);
 
 		return true;
@@ -511,6 +516,15 @@ int main(int argc, char *argv[])
 			return 0;
 		}
 
+		// Write key to file
+		StringSource ss(key, key.size(), true, new FileSink("des_key.key"));
+
+		// Read key from file
+		// FileSource fs("des_key.key", false);
+		// CryptoPP::ArraySink bytes_key(key, key_size);
+		// fs.Detach(new Redirector(bytes_key));
+		// fs.Pump(key_size);
+
 		// Decide on the mode
 		switch (mode)
 		{
@@ -560,6 +574,15 @@ int main(int argc, char *argv[])
 			wcout << L"Đã xảy ra lỗi khi nhập IV!\n";
 			return 0;
 		}
+
+		// Write key to file
+		StringSource ss(key, key.size(), true, new FileSink("aes_key.key"));
+
+		// Read key from file
+		// FileSource fs("aes_key.key", false);
+		// CryptoPP::ArraySink bytes_key(key, key_size);
+		// fs.Detach(new Redirector(bytes_key));
+		// fs.Pump(key_size);
 
 		// Decide on the mode
 		switch (mode)

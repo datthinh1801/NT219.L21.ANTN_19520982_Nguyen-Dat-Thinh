@@ -33,12 +33,16 @@ using CryptoPP::AES;
 #include "cryptopp/modes.h"
 using CryptoPP::ECB_Mode;
 
+#include "cryptopp/filters.h"
+#include "cryptopp/files.h"
+using CryptoPP::FileSink;
+
 int main(int argc, char *argv[])
 {
-	AutoSeededRandomPool prng;
+	CryptoPP::SecByteBlock key = CryptoPP::SecByteBlock(16);
 
-	CryptoPP::byte key[AES::DEFAULT_KEYLENGTH];
-	prng.GenerateBlock(key, sizeof(key));
+	AutoSeededRandomPool prng;
+	prng.GenerateBlock(key, key.size());
 
 	string plain = "ECB Mode Test";
 	string cipher, encoded, recovered;
@@ -48,7 +52,7 @@ int main(int argc, char *argv[])
 
 	// Pretty print key
 	encoded.clear();
-	StringSource(key, sizeof(key), true,
+	StringSource(key, key.size(), true,
 				 new HexEncoder(
 					 new StringSink(encoded)) // HexEncoder
 	);										  // StringSource
@@ -62,7 +66,7 @@ int main(int argc, char *argv[])
 		cout << "plain text: " << plain << endl;
 
 		ECB_Mode<AES>::Encryption e;
-		e.SetKey(key, sizeof(key));
+		e.SetKey(key, key.size());
 
 		// The StreamTransformationFilter adds padding
 		//  as required. ECB and CBC Mode must be padded
@@ -95,7 +99,7 @@ int main(int argc, char *argv[])
 	try
 	{
 		ECB_Mode<AES>::Decryption d;
-		d.SetKey(key, sizeof(key));
+		d.SetKey(key, key.size());
 
 		// The StreamTransformationFilter removes
 		//  padding as required.
