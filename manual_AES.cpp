@@ -146,7 +146,7 @@ unsigned char GetLast4bitsValue(unsigned char b)
 }
 
 // Randomly generate a 16-byte key
-vector<vector<unsigned char>> RandomKey()
+vector<vector<unsigned char>> RandomA16byteBlock()
 {
     srand(time(0));
 
@@ -357,7 +357,7 @@ vector<vector<unsigned char>> KeyExpansion(const vector<vector<unsigned char>> &
     return expanded_key;
 }
 
-vector<vector<unsigned char>> Encrypt(string plaintext, const vector<vector<unsigned char>> &key)
+vector<vector<unsigned char>> Encrypt(string plaintext, const vector<vector<unsigned char>> &key, const vector<vector<unsigned char>> &iv)
 {
     vector<vector<unsigned char>> cipher_block(4);
     auto plain_block = ConvertStringToBlock(plaintext);
@@ -367,12 +367,16 @@ vector<vector<unsigned char>> Encrypt(string plaintext, const vector<vector<unsi
 
     // [KEY EXPANSION]
     auto expanded_key = KeyExpansion(key);
+    // CBC mode
+    auto aux_block = iv;
 
     // Loop through 4 words of the plain_block at a time
     for (int i = 0; i < plain_block[0].size(); i += 4)
     {
         // Extract a 4-word block from the original block
         auto current_state = Split(plain_block, i);
+        // CBC mode
+        current_state = XOR(current_state, aux_block);
         // Extract the round key 0
         auto round_key_0 = Split(expanded_key, 0);
 
@@ -400,6 +404,8 @@ vector<vector<unsigned char>> Encrypt(string plaintext, const vector<vector<unsi
             current_state = XOR(current_state, round_key);
         }
 
+        aux_block = current_state;
+
         // Append the state to the overall cipher_block
         for (int i = 0; i < 4; ++i)
         {
@@ -412,9 +418,10 @@ vector<vector<unsigned char>> Encrypt(string plaintext, const vector<vector<unsi
     return cipher_block;
 }
 
-string Decrypt(const vector<vector<unsigned char>> &cipher_block, const vector<vector<unsigned char>> &key)
+string Decrypt(const vector<vector<unsigned char>> &cipher_block, const vector<vector<unsigned char>> &key, const vector<vector<unsigned char>> &iv)
 {
     vector<vector<unsigned char>> plain_block(4);
+    auto aux_block = iv;
 
     // [KEY EXPANSION]
     auto expanded_key = KeyExpansion(key);
@@ -424,6 +431,8 @@ string Decrypt(const vector<vector<unsigned char>> &cipher_block, const vector<v
     {
         // Extract a 4-word block from the original block
         auto current_state = Split(cipher_block, i);
+        // CBC mode
+        auto next_aux_block = current_state;
         // Extract the round key 0
         auto round_key_10 = Split(expanded_key, 40);
 
@@ -448,6 +457,10 @@ string Decrypt(const vector<vector<unsigned char>> &cipher_block, const vector<v
             }
         }
 
+        // CBC mode
+        current_state = XOR(current_state, aux_block);
+        aux_block = next_aux_block;
+
         // Append the state to the overall plain_block
         for (int i = 0; i < 4; ++i)
         {
@@ -467,17 +480,22 @@ int main()
     std::cout << "Plaintext: ";
     getline(cin, plaintext);
 
-    auto key = RandomKey();
+    auto key = RandomA16byteBlock();
     std::cout << "Key:\n";
     PrintMatrix(key);
     std::cout << endl;
 
-    auto cipher_block = Encrypt(plaintext, key);
+    auto iv = RandomA16byteBlock();
+    std::cout << "IV:\n";
+    PrintMatrix(iv);
+    std::cout << endl;
+
+    auto cipher_block = Encrypt(plaintext, key, iv);
     std::cout << "Cipher block:\n";
     PrintMatrix(cipher_block);
     std::cout << endl;
 
-    auto recovered_string = Decrypt(cipher_block, key);
+    auto recovered_string = Decrypt(cipher_block, key, iv);
     std::cout << "Recovered: " << recovered_string << endl;
     return 0;
 }
