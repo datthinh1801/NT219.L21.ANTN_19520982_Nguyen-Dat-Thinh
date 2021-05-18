@@ -437,6 +437,42 @@ int SelectScheme()
 	}
 }
 
+int SelectKeySize()
+{
+	/*
+    |----------|----------|
+    | Key size | # rounds |
+    |----------|----------|
+    | 128 bits | 10       |
+    | 192 bits | 12       |
+    | 256 bits | 14       |
+    |----------|----------|
+    */
+	const int key_sizes[] = {16, 24, 32};
+	wcout << L"Chọn key size cho AES:" << endl;
+	wcout << L"(1) 128 bits ~ 16 bytes (default)\n";
+	wcout << L"(2) 192 bits ~ 24 bytes\n";
+	wcout << L"(3) 256 bits ~ 32 bytes\n";
+	wcout << L"\n> ";
+	int option;
+	try
+	{
+		wcin >> option;
+		if (option >= 1 && option <= 3)
+		{
+			return key_sizes[option - 1];
+		}
+		else
+		{
+			return -1;
+		}
+	}
+	catch (const std::exception &e)
+	{
+		return -1;
+	}
+}
+
 int main(int argc, char *argv[])
 {
 	// Setup for Vietnamese language support
@@ -465,6 +501,7 @@ int main(int argc, char *argv[])
 	bool valid = true;
 	double *etime = NULL;
 
+	// DES
 	if (scheme == 1)
 	{
 		key = new SecByteBlock(DES::DEFAULT_KEYLENGTH);
@@ -497,9 +534,17 @@ int main(int argc, char *argv[])
 			break;
 		}
 	}
+	// AES
 	else if (scheme == 2)
 	{
-		key = new SecByteBlock(AES::DEFAULT_KEYLENGTH);
+		int key_size = SelectKeySize();
+		if (key_size == -1)
+		{
+			wcout << L"Key size không hợp lệ!" << endl;
+			return 0;
+		}
+
+		key = new SecByteBlock(key_size);
 		iv = new CryptoPP::byte[AES::BLOCKSIZE];
 
 		// Decide on the mode
