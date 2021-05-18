@@ -198,7 +198,7 @@ void DES_CBC()
 		Encrypt(plain, e, cipher);
 
 		// At this point, cipher stores bytes of the encrypted text,
-		// so it needs to be encoded by HexEncoder to be betther printed
+		// so it needs to be encoded by HexEncoder to be better printed
 	}
 	catch (const CryptoPP::Exception &e)
 	{
