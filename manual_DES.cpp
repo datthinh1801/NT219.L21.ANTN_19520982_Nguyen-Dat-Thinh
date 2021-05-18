@@ -224,8 +224,8 @@ void PrintHexString(const string &str)
     cout << endl;
 }
 
-// Randomly generate a 64-bit key
-vector<unsigned char> GenerateKeyRandomly()
+// Randomly generate a 64-bit block
+vector<unsigned char> Generate64bitBlockRandomly()
 {
     vector<unsigned char> key(64);
 
@@ -472,7 +472,8 @@ vector<unsigned char> &RemovePadding(vector<unsigned char> &block)
     return block;
 }
 
-string Encrypt(const string &plaintext, vector<unsigned char> &key)
+// Perform encryption
+string Encrypt(const string &plaintext, const vector<unsigned char> &key, vector<unsigned char> &iv)
 {
     // Convert the plaintext string to a plaintext block
     vector<unsigned char> original_plainblock = ConvertStringToBin(plaintext);
@@ -482,9 +483,6 @@ string Encrypt(const string &plaintext, vector<unsigned char> &key)
     // Add paddings if necessary
     original_plainblock = AddPadding(original_plainblock);
 
-    // Generate a 64-bit key
-    key.clear();
-    key = GenerateKeyRandomly();
     vector<unsigned char> permuted_key = PermutedChoice1(key);
 
     // Permuated choice 1 on the key, which yields a 56-bit key
@@ -494,6 +492,8 @@ string Encrypt(const string &plaintext, vector<unsigned char> &key)
     vector<vector<unsigned char>> round_keys = CalculateRoundKeys(permuted_key);
 
     vector<unsigned char> plainblock;
+    vector<unsigned char> current_block = iv;
+
     // Loop through each 64-bit block of the original plainblock
     for (unsigned char bit : original_plainblock)
     {
@@ -501,6 +501,12 @@ string Encrypt(const string &plaintext, vector<unsigned char> &key)
 
         if (plainblock.size() == 64)
         {
+            // CBC mode
+            plainblock = XOR(plainblock, current_block);
+
+            /*
+            START OF ENCRYPTION 
+            */
             // Perform initial permutation on the plain block.
             // The result is a 64-bit block
             plainblock = IniatialPermutate(plainblock);
@@ -529,7 +535,11 @@ string Encrypt(const string &plaintext, vector<unsigned char> &key)
             cipherblock = Concate(prev_right_block, prev_left_block);
             cipherblock = InverseInitialPermutate(cipherblock);
             ciphertext += ConvertBinToString(cipherblock);
+            /*
+            END OF ENCRYPTION
+            */
 
+            current_block = cipherblock;
             plainblock.clear();
         }
     }
@@ -537,7 +547,8 @@ string Encrypt(const string &plaintext, vector<unsigned char> &key)
     return ciphertext;
 }
 
-string Decrypt(const string &ciphertext, const vector<unsigned char> &key)
+// Perform decryption
+string Decrypt(const string &ciphertext, const vector<unsigned char> &key, const vector<unsigned char> &iv)
 {
     // Initialization
     vector<unsigned char> original_cipherblock = ConvertStringToBin(ciphertext);
@@ -549,6 +560,9 @@ string Decrypt(const string &ciphertext, const vector<unsigned char> &key)
     vector<vector<unsigned char>> round_keys = CalculateRoundKeys(permuted_key);
 
     vector<unsigned char> cipherblock;
+    vector<unsigned char> current_block = iv;
+    vector<unsigned char> next_block;
+
     // Loop through each 64-bit block of the original cipherblock
     for (unsigned char bit : original_cipherblock)
     {
@@ -556,7 +570,12 @@ string Decrypt(const string &ciphertext, const vector<unsigned char> &key)
 
         if (cipherblock.size() == 64)
         {
-            // Decryption routine
+            // CBC mode
+            next_block = cipherblock;
+
+            /*
+            START OF DECRYPTION
+            */
             cipherblock = IniatialPermutate(cipherblock);
             vector<unsigned char> prev_left_block = Split(cipherblock, 0, 32);
             vector<unsigned char> prev_right_block = Split(cipherblock, 32, 32);
@@ -577,8 +596,14 @@ string Decrypt(const string &ciphertext, const vector<unsigned char> &key)
 
             plainblock = Concate(prev_right_block, prev_left_block);
             plainblock = InverseInitialPermutate(plainblock);
+            // CBC mode
+            plainblock = XOR(plainblock, current_block);
             plaintext += ConvertBinToString(plainblock);
+            /*
+            END OF DECRYPTION
+            */
 
+            current_block = next_block;
             cipherblock.clear();
         }
     }
@@ -590,16 +615,26 @@ int main()
     // Seed the random function
     srand(time(0));
 
+    // Grasp plaintext
     string plaintext;
     cout << "Plaintext: ";
     getline(cin, plaintext);
 
-    vector<unsigned char> key;
-    string ciphertext = Encrypt(plaintext, key);
+    // Generate a 64-bit key
+    vector<unsigned char> key = Generate64bitBlockRandomly();
+    cout << "Key: ";
+    PrintHexString(ConvertBinToString(key));
+
+    // Generate IV
+    vector<unsigned char> iv = Generate64bitBlockRandomly();
+    cout << "IV: ";
+    PrintHexString(ConvertBinToString(iv));
+
+    string ciphertext = Encrypt(plaintext, key, iv);
     cout << "Ciphertext: ";
     PrintHexString(ciphertext);
 
-    string recoveredtext = Decrypt(ciphertext, key);
-    cout << "Recovered: " << recoveredtext << endl;
+    string recoveredtext = Decrypt(ciphertext, key, iv);
+    cout << "Recovered text: " << recoveredtext << endl;
     return 0;
 }
