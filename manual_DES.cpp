@@ -7,6 +7,10 @@
 #include <string>
 #include <vector>
 #include <iomanip>
+#include <codecvt>
+#include <io.h>
+#include <fcntl.h>
+#include <locale>
 using namespace std;
 
 /*
@@ -129,13 +133,29 @@ const unsigned char shift_routine[16] = {1, 1, 2, 2, 2, 2, 2, 2, 1, 2, 2, 2, 2, 
 END CONSTANT DECLARATION
 */
 
+// Convert string to wstring
+wstring s2ws(const std::string &str)
+{
+    using convert_type = std::codecvt_utf8<wchar_t>;
+    std::wstring_convert<convert_type, wchar_t> converter;
+    return converter.from_bytes(str);
+}
+
+// Convert wstring to string
+string ws2s(const std::wstring &wstr)
+{
+    using convert_type = std::codecvt_utf8<wchar_t>;
+    std::wstring_convert<convert_type, wchar_t> converter;
+    return converter.to_bytes(wstr);
+}
+
 void printBits(const vector<unsigned char> &block)
 {
     for (int i = 0; i < block.size(); ++i)
     {
-        cout << (unsigned int)block[i] << " ";
+        wcout << (unsigned int)block[i] << " ";
     }
-    cout << endl;
+    wcout << endl;
 }
 
 // Extract `len` bits from the block
@@ -219,9 +239,9 @@ void PrintHexString(const string &str)
     auto string_block = ConvertStringToBin(str);
     for (int offset = 0; offset < string_block.size(); offset += 4)
     {
-        cout << hex << uppercase << (unsigned int)ConvertBinToDec(Split(string_block, offset, 4));
+        wcout << hex << uppercase << (unsigned int)ConvertBinToDec(Split(string_block, offset, 4));
     }
-    cout << endl;
+    wcout << endl;
 }
 
 // Randomly generate a 64-bit block
@@ -610,31 +630,112 @@ string Decrypt(const string &ciphertext, const vector<unsigned char> &key, const
     return plaintext;
 }
 
+// Setup for Vietnamese support
+void SetupVietnameseSupport()
+{
+    _setmode(_fileno(stdin), _O_U16TEXT);
+    _setmode(_fileno(stdout), _O_U16TEXT);
+}
+
+// Get a block from console
+vector<unsigned char> GetBlockFromConsole(wstring which)
+{
+    wstring winput;
+    string input;
+    wcout << L"Vui lòng nhập " + which + L" : ";
+    getline(wcin, winput);
+    input = ws2s(winput);
+    auto block = ConvertStringToBin(input);
+
+    if (block.size() >= 64)
+    {
+        return Split(block, 0, 64);
+    }
+    else
+    {
+        while (block.size() < 64)
+        {
+            block.push_back(0);
+        }
+        return block;
+    }
+}
+
+bool SelectInputOption(vector<unsigned char> &block, wstring which)
+{
+    int option;
+    wcout << L"Nhập " + which + L" hay random " + which + L" :\n";
+    wcout << L"(1) Nhập " + which << endl;
+    wcout << L"(2) Random " + which << endl;
+    wcout << L"\n> ";
+
+    try
+    {
+        wcin >> option;
+        fflush(stdin);
+
+        if (option == 1)
+        {
+            block = GetBlockFromConsole(which);
+        }
+        else if (option == 2)
+        {
+            block = Generate64bitBlockRandomly();
+        }
+        return true;
+    }
+    catch (const std::exception &e)
+    {
+        fflush(stdin);
+        return false;
+    }
+}
+
 int main()
 {
+    // Setup for Vietnamese support
+    SetupVietnameseSupport();
+
     // Seed the random function
     srand(time(0));
 
-    // Grasp plaintext
+    // Acquire plaintext
     string plaintext;
-    cout << "Plaintext: ";
-    getline(cin, plaintext);
+    wstring wplaintext;
+    wcout << L"Nhập plaintext: ";
+    getline(wcin, wplaintext);
+
+    plaintext = ws2s(wplaintext);
 
     // Generate a 64-bit key
-    vector<unsigned char> key = Generate64bitBlockRandomly();
-    cout << "Key: ";
-    PrintHexString(ConvertBinToString(key));
+    vector<unsigned char> key;
+    if (!SelectInputOption(key, L"key"))
+    {
+        wcout << L"Có lỗi xảy ra trong quá trình tạo key!" << endl;
+        return 0;
+    }
 
     // Generate IV
-    vector<unsigned char> iv = Generate64bitBlockRandomly();
-    cout << "IV: ";
+    vector<unsigned char> iv;
+    if (!SelectInputOption(iv, L"IV"))
+    {
+        wcout << L"Có lỗi xảy ra trong quá trình tạo IV!" << endl;
+        return 0;
+    }
+
+    // Report parameters
+    wcout << L"Plaintext :" << wplaintext << endl;
+    wcout << L"Key: ";
+    PrintHexString(ConvertBinToString(key));
+    wcout << L"IV: ";
     PrintHexString(ConvertBinToString(iv));
 
     string ciphertext = Encrypt(plaintext, key, iv);
-    cout << "Ciphertext: ";
+    wcout << L"Ciphertext: ";
     PrintHexString(ciphertext);
 
-    string recoveredtext = Decrypt(ciphertext, key, iv);
-    cout << "Recovered text: " << recoveredtext << endl;
+    string recovered_text = Decrypt(ciphertext, key, iv);
+    wstring wrecovered_text = s2ws(recovered_text);
+    wcout << L"Recovered text: " << wrecovered_text << endl;
     return 0;
 }
