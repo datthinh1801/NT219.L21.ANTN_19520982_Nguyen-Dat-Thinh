@@ -653,10 +653,7 @@ vector<unsigned char> GetBlockFromConsole(wstring which)
     }
     else
     {
-        while (block.size() < 64)
-        {
-            block.push_back(0);
-        }
+        block = AddPadding(block);
         return block;
     }
 }
@@ -684,7 +681,7 @@ bool SelectInputOption(vector<unsigned char> &block, wstring which)
         }
         return true;
     }
-    catch (const std::exception &e)
+    catch (...)
     {
         fflush(stdin);
         return false;
@@ -707,7 +704,7 @@ int main()
 
     plaintext = ws2s(wplaintext);
 
-    // Generate a 64-bit key
+    // Get a 64-bit key
     vector<unsigned char> key;
     if (!SelectInputOption(key, L"key"))
     {
@@ -730,10 +727,12 @@ int main()
     wcout << L"IV: ";
     PrintHexString(ConvertBinToString(iv));
 
+    // Perform encryption
     string ciphertext = Encrypt(plaintext, key, iv);
     wcout << L"Ciphertext: ";
     PrintHexString(ciphertext);
 
+    // Perform decryption
     string recovered_text = Decrypt(ciphertext, key, iv);
     wstring wrecovered_text = s2ws(recovered_text);
     wcout << L"Recovered text: " << wrecovered_text << endl;
