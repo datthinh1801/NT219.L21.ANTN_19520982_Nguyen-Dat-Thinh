@@ -1,5 +1,9 @@
 #include <iostream>
+#include <codecvt>
+#include <locale>
 #include <vector>
+#include <io.h>
+#include <fcntl.h>
 #include <time.h>
 #include <string>
 #include <iomanip>
@@ -29,6 +33,22 @@ const unsigned char round_constants[4][10] = {
     0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0,
     0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0,
     0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0};
+
+// Convert string to wstring
+wstring s2ws(const std::string &str)
+{
+    using convert_type = std::codecvt_utf8<wchar_t>;
+    std::wstring_convert<convert_type, wchar_t> converter;
+    return converter.from_bytes(str);
+}
+
+// Convert wstring to string
+string ws2s(const std::wstring &wstr)
+{
+    using convert_type = std::codecvt_utf8<wchar_t>;
+    std::wstring_convert<convert_type, wchar_t> converter;
+    return converter.to_bytes(wstr);
+}
 
 // Convert a string to a 4xN matrix represent its hexadecimal values
 // The output might not be of 4xN in shape
@@ -68,9 +88,9 @@ void PrintMatrix(const vector<vector<unsigned char>> &block)
     {
         for (int j = 0; j < block[i].size(); ++j)
         {
-            cout << setfill('0') << setw(2) << hex << uppercase << (unsigned int)block[i][j] << " ";
+            wcout << setfill(L'0') << setw(2) << hex << uppercase << (unsigned int)block[i][j] << " ";
         }
-        cout << endl;
+        wcout << endl;
     }
 }
 
@@ -474,28 +494,110 @@ string Decrypt(const vector<vector<unsigned char>> &cipher_block, const vector<v
     return ConvertBlockToString(plain_block);
 }
 
+// Setup for Vietnamese support
+void SetupVietnameseSupport()
+{
+    _setmode(_fileno(stdin), _O_U16TEXT);
+    _setmode(_fileno(stdout), _O_U16TEXT);
+}
+
+// Get a block from console
+vector<vector<unsigned char>> GetBlockFromConsole(wstring which)
+{
+    wstring winput;
+    string input;
+    wcout << L"Vui lòng nhập " + which + L" : ";
+    getline(wcin, winput);
+    input = ws2s(winput);
+    auto block = ConvertStringToBlock(input);
+
+    if (block.size() >= 64)
+    {
+        return Split(block, 0);
+    }
+    else
+    {
+        block = AddPadding(block);
+        return block;
+    }
+}
+
+bool SelectInputOption(vector<vector<unsigned char>> &block, wstring which)
+{
+    int option;
+    wcout << L"Nhập " + which + L" hay random " + which + L" :\n";
+    wcout << L"(1) Nhập " + which << endl;
+    wcout << L"(2) Random " + which << endl;
+    wcout << L"\n> ";
+
+    try
+    {
+        wcin >> option;
+        fflush(stdin);
+
+        if (option == 1)
+        {
+            block = GetBlockFromConsole(which);
+        }
+        else if (option == 2)
+        {
+            block = RandomA16byteBlock();
+        }
+        return true;
+    }
+    catch (...)
+    {
+        fflush(stdin);
+        return false;
+    }
+}
 int main()
 {
+    // Setup for Vietnamese support
+    SetupVietnameseSupport();
+
+    // Acquire plaintext
     string plaintext;
-    std::cout << "Plaintext: ";
-    getline(cin, plaintext);
+    wstring wplaintext;
+    std::wcout << L"Nhập plaintext: ";
+    getline(wcin, wplaintext);
 
-    auto key = RandomA16byteBlock();
-    std::cout << "Key:\n";
+    plaintext = ws2s(wplaintext);
+
+    // Key generation
+    vector<vector<unsigned char>> key;
+    if (!SelectInputOption(key, L"key"))
+    {
+        wcout << L"Có lỗi xảy ra trong quá trình tạo key!" << endl;
+        return 0;
+    }
+
+    // IV generation
+    vector<vector<unsigned char>> iv;
+    if (!SelectInputOption(iv, L"IV"))
+    {
+        wcout << L"Có lỗi xảy ra trong quá trình tạo IV!" << endl;
+        return 0;
+    }
+
+    // Report parameters
+    wcout << L"Plaintext: " << wplaintext << endl;
+    wcout << L"Key:\n";
     PrintMatrix(key);
-    std::cout << endl;
-
-    auto iv = RandomA16byteBlock();
-    std::cout << "IV:\n";
+    wcout << endl;
+    wcout << L"IV:\n";
     PrintMatrix(iv);
-    std::cout << endl;
+    wcout << endl;
 
+    // Perform encryption
     auto cipher_block = Encrypt(plaintext, key, iv);
-    std::cout << "Cipher block:\n";
+    std::wcout << L"Cipher block:\n";
     PrintMatrix(cipher_block);
-    std::cout << endl;
+    std::wcout << endl;
 
-    auto recovered_string = Decrypt(cipher_block, key, iv);
-    std::cout << "Recovered: " << recovered_string << endl;
+    // Perform decryption
+    string recovered_string = Decrypt(cipher_block, key, iv);
+    wstring wrecovered_string = s2ws(recovered_string);
+    std::wcout << L"Recovered: " << wrecovered_string << endl;
     return 0;
 }
