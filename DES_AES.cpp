@@ -673,11 +673,12 @@ bool GraspInputFromConsole(SecByteBlock &block, int block_size, wstring which)
 
 // Generate the key/IV based on option (manual or random).
 // Return true if succeed.
-bool GenerateSecByteBlock(SecByteBlock &block, int block_size, wstring which)
+bool GenerateSecByteBlock(SecByteBlock &block, int block_size, wstring which, int scheme)
 {
-	wcout << L"Nhập " + which + L" hay random " + which + L":\n";
+	wcout << L"Nhập " + which + L", random hay đọc " + which + L" từ file:\n";
 	wcout << L"(1) Nhập " + which << endl;
 	wcout << L"(2) Random " + which << endl;
+	wcout << L"(3) Đọc " + which << L" từ file" << endl;
 	wcout << L"> ";
 
 	int option;
@@ -699,6 +700,37 @@ bool GenerateSecByteBlock(SecByteBlock &block, int block_size, wstring which)
 			block = SecByteBlock(block_size);
 			prng.GenerateBlock(block, block_size);
 			return true;
+		}
+		else if (option == 3)
+		{
+			if (scheme == 1 && which == L"key")
+			{
+				FileSource fs("des_key.key", false);
+				CryptoPP::ArraySink bytes_block(block, block_size);
+				fs.Detach(new Redirector(bytes_block));
+				fs.Pump(block_size);
+			}
+			else if (scheme == 1 && which == L"IV")
+			{
+				FileSource fs("des_iv.key", false);
+				CryptoPP::ArraySink bytes_block(block, block_size);
+				fs.Detach(new Redirector(bytes_block));
+				fs.Pump(block_size);
+			}
+			else if (scheme == 2 && which == L"key")
+			{
+				FileSource fs("aes_key.key", false);
+				CryptoPP::ArraySink bytes_block(block, block_size);
+				fs.Detach(new Redirector(bytes_block));
+				fs.Pump(block_size);
+			}
+			else
+			{
+				FileSource fs("aes_iv.key", false);
+				CryptoPP::ArraySink bytes_block(block, block_size);
+				fs.Detach(new Redirector(bytes_block));
+				fs.Pump(block_size);
+			}
 		}
 		else
 		{
@@ -763,7 +795,7 @@ int main(int argc, char *argv[])
 	{
 		// Generate key by random, from screen, or from file
 		key_size = DES::DEFAULT_KEYLENGTH;
-		if (!GenerateSecByteBlock(key, key_size, L"key"))
+		if (!GenerateSecByteBlock(key, key_size, L"key", scheme))
 		{
 			wcout << L"Đã xảy ra lỗi khi nhập key!\n";
 			exit(1);
@@ -773,17 +805,17 @@ int main(int argc, char *argv[])
 		if (mode > 1)
 		{
 			iv_size = DES::BLOCKSIZE;
-			if (!GenerateSecByteBlock(iv, iv_size, L"IV"))
+			if (!GenerateSecByteBlock(iv, iv_size, L"IV", scheme))
 			{
 				wcout << L"Đã xãy ra lỗi khi nhập IV!\n";
 				exit(1);
 			}
 		}
 		// Write key to file
-		StringSource ss_key(key, key.size(), true, new FileSink("key.key"));
+		StringSource ss_key(key, key.size(), true, new FileSink("des_key.key"));
 
 		// Write IV to file
-		StringSource ss_iv(iv, iv.size(), true, new FileSink("iv.key"));
+		StringSource ss_iv(iv, iv.size(), true, new FileSink("des_iv.key"));
 
 		// Read key from file
 		// FileSource fs("des_key.key", false);
@@ -825,7 +857,7 @@ int main(int argc, char *argv[])
 		}
 
 		// Generate key by random, from screen, or from file
-		if (!GenerateSecByteBlock(key, key_size, L"key"))
+		if (!GenerateSecByteBlock(key, key_size, L"key", scheme))
 		{
 			wcout << L"Đã xảy ra lỗi khi nhập key!\n";
 			exit(1);
@@ -842,7 +874,7 @@ int main(int argc, char *argv[])
 			{
 				iv_size = AES::BLOCKSIZE;
 			}
-			if (!GenerateSecByteBlock(iv, iv_size, L"IV"))
+			if (!GenerateSecByteBlock(iv, iv_size, L"IV", scheme))
 			{
 				wcout << L"Đã xảy ra lỗi khi nhập IV!\n";
 				exit(1);
@@ -850,10 +882,10 @@ int main(int argc, char *argv[])
 		}
 
 		// Write key to file
-		StringSource ss_key(key, key.size(), true, new FileSink("key.key"));
+		StringSource ss_key(key, key.size(), true, new FileSink("aes_key.key"));
 
 		// Write IV to file
-		StringSource ss_iv(iv, iv.size(), true, new FileSink("iv.key"));
+		StringSource ss_iv(iv, iv.size(), true, new FileSink("aes_iv.key"));
 
 		// Read key from file
 		// FileSource fs("aes_key.key", false);
