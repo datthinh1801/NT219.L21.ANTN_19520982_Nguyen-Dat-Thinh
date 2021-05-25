@@ -52,7 +52,6 @@ using CryptoPP::DES;
 using CryptoPP::AES;
 
 #include "cryptopp/modes.h"
-using CryptoPP::CBC_CTS_Mode;
 using CryptoPP::CBC_Mode;
 using CryptoPP::CFB_Mode;
 using CryptoPP::CTR_Mode;
@@ -365,15 +364,19 @@ double *Encrypt_Decrypt_withAuthentication(AutoSeededRandomPool &prng, SecByteBl
 	try
 	{
 		Encryption enc;
+		// Attach key and IV
 		enc.SetKeyWithIV(key, sizeof(key), iv, sizeof(iv));
+		// Not required for GCM, but required for CCM
 		enc.SpecifyDataLengths(auth.size(), plaintext.size(), 0);
 
 		AuthenticatedEncryptionFilter ef(enc,
-										 new StringSink(ciphertext));
+										 new StringSink(ciphertext), false, TAG_SIZE);
 
+		// Put authenticated data to the authenticated channel which only provides authentication
 		ef.ChannelPut(AAD_CHANNEL, (const CryptoPP::byte *)auth.data(), auth.size());
 		ef.ChannelMessageEnd(AAD_CHANNEL);
 
+		// Put plaintext to the default channel which provides confidentiality and authentiation
 		ef.ChannelPut(DEFAULT_CHANNEL, (const CryptoPP::byte *)plaintext.data(), plaintext.size());
 		ef.ChannelMessageEnd(DEFAULT_CHANNEL);
 	}
@@ -388,19 +391,28 @@ double *Encrypt_Decrypt_withAuthentication(AutoSeededRandomPool &prng, SecByteBl
 	int start_d = clock();
 	try
 	{
+		// Split the ciphertext into encrypted data and MAC value
 		string encrypted_data = ciphertext.substr(0, ciphertext.size() - TAG_SIZE);
 		string mac = ciphertext.substr(ciphertext.size() - TAG_SIZE);
 
 		GCM<AES>::Decryption dec;
+		// Attach the key and IV
 		dec.SetKeyWithIV(key, sizeof(key), iv, sizeof(iv));
 		dec.SpecifyDataLengths(recovered_auth.size(), encrypted_data.size(), 0);
 
+		// Sanity checks
+		assert(ciphertext.size() == encrypted_data.size() + mac.size());
+		assert(encrypted_data.size() == plaintext.size());
+		assert(TAG_SIZE == mac.size());
+
+		// Authenticated data is sent via a clear channel
 		recovered_auth = auth;
 
 		AuthenticatedDecryptionFilter df(dec, NULL,
 										 AuthenticatedDecryptionFilter::MAC_AT_BEGIN |
 											 AuthenticatedDecryptionFilter::THROW_EXCEPTION,
 										 TAG_SIZE);
+
 		df.ChannelPut(DEFAULT_CHANNEL, (const CryptoPP::byte *)mac.data(), mac.size());
 		df.ChannelPut(AAD_CHANNEL, (const CryptoPP::byte *)auth.data(), auth.size());
 		df.ChannelPut(DEFAULT_CHANNEL, (const CryptoPP::byte *)encrypted_data.data(), encrypted_data.size());
@@ -413,6 +425,7 @@ double *Encrypt_Decrypt_withAuthentication(AutoSeededRandomPool &prng, SecByteBl
 		b = df.GetLastResult();
 		assert(true == b);
 
+		// Retrieve confidential data from channel
 		df.SetRetrievalChannel(DEFAULT_CHANNEL);
 		size_t n = (size_t)df.MaxRetrievable();
 		recovered_plaintext.resize(n);
@@ -433,12 +446,26 @@ double *Encrypt_Decrypt_withAuthentication(AutoSeededRandomPool &prng, SecByteBl
 	double *etime = new double[2];
 	etime[0] = double(end_e - start_e) / CLOCKS_PER_SEC * 1000;
 	etime[1] = double(end_d - start_d) / CLOCKS_PER_SEC * 1000;
-	return etime
+	return etime;
 }
 
 template <class Encryption, class Decryption>
-double *Looping_Authentication(AutoSeededRandomPool &prng, SecByteBlock &key, string plaintext, string auth, string &ciphertext, string &recovered)
+double *Looping_Authentication(AutoSeededRandomPool &prng, SecByteBlock &key, SecByteBlock &iv, string plaintext, string auth, string &ciphertext, string &recovered_plaintext, string &recovered_auth)
 {
+	double *sum = new double[2];
+	double *etime = NULL;
+	sum[0] = 0;
+	sum[1] = 0;
+
+	for (int i = 0; i < N_ITER; ++i)
+	{
+		etime = Encrypt_Decrypt_withAuthentication<Encryption, Decryption>(prng, key, iv, plaintext, auth, ciphertext, recovered_plaintext, recovered_auth);
+		sum[0] += etime[0];
+		sum[1] += etime[1];
+	}
+
+	delete[] etime;
+	return sum;
 }
 
 // Setup for Vietnamese support
@@ -449,7 +476,7 @@ void SetupVietnameseSupport()
 }
 
 // Select mode of operation
-int SelectMode()
+int SelectMode(bool is_AES)
 {
 	int mode;
 	wcout << L"Chọn một mode of operation (nhập vào số tương ứng):\n";
@@ -458,10 +485,13 @@ int SelectMode()
 	wcout << L"(3) CFB\n";
 	wcout << L"(4) OFB\n";
 	wcout << L"(5) CTR\n";
-	wcout << L"(6) CBC_CTS\n";
-	wcout << L"(7) XTS\n";
-	wcout << L"(8) GCM\n";
-	wcout << L"(9) CCM\n";
+
+	if (is_AES)
+	{
+		wcout << L"(6) XTS\n";
+		wcout << L"(7) GCM\n";
+		wcout << L"(8) CCM\n";
+	}
 	wcout << L"> ";
 
 	try
@@ -469,7 +499,7 @@ int SelectMode()
 		wcin >> mode;
 
 		// if mode is of type 'int' but not within the valid range
-		if (mode < 1 || mode > 9)
+		if (mode < 1 || (mode > 8 && is_AES) || (mode > 5 && !is_AES))
 			return -1;
 
 		// otherwise
@@ -638,33 +668,67 @@ int main(int argc, char *argv[])
 
 	// Select scheme
 	int scheme = SelectScheme();
+	if (scheme == -1)
+	{
+		wcout << "[-] Invalid scheme!" << endl;
+		exit(1);
+	}
 
 	// Select mode
-	int mode = SelectMode();
-	double *etime = NULL;
+	int mode;
+	if (scheme == 1)
+	{
+		mode = SelectMode(false);
+	}
+	else if (scheme == 2)
+	{
+		mode = SelectMode(true);
+	}
 
-	int key_size;
-	int iv_size;
+	if (mode == -1)
+	{
+		wcout << "[-] Invalid mode!" << endl;
+		exit(1);
+	}
+
+	double *etime = NULL;
+	int key_size, iv_size;
+
+	string auth, recovered_auth;
+	wstring wath;
+
+	if (mode == 7 | mode == 8)
+	{
+		wcout << L"Autheticated data : " << endl;
+		fflush(stdin);
+		getline(wcin, wath);
+	}
+	auth = ws2s(wath);
 
 	// DES
 	if (scheme == 1)
 	{
+		// Generate key by random, from screen, or from file
 		key_size = DES::DEFAULT_KEYLENGTH;
 		if (!GenerateSecByteBlock(key, key_size, L"key"))
 		{
 			wcout << L"Đã xảy ra lỗi khi nhập key!\n";
-			return 0;
+			exit(1);
 		}
 
+		// Generate IV by random, from screen, or from file
 		iv_size = DES::BLOCKSIZE;
 		if (!GenerateSecByteBlock(iv, iv_size, L"IV"))
 		{
 			wcout << L"Đã xãy ra lỗi khi nhập IV!\n";
-			return 0;
+			exit(1);
 		}
 
 		// Write key to file
-		StringSource ss(key, key.size(), true, new FileSink("key.key"));
+		StringSource ss_key(key, key.size(), true, new FileSink("key.key"));
+
+		// Write IV to file
+		StringSource ss_iv(iv, iv.size(), true, new FileSink("iv.key"));
 
 		// Read key from file
 		// FileSource fs("des_key.key", false);
@@ -690,40 +754,41 @@ int main(int argc, char *argv[])
 		case 5:
 			etime = LoopingIV<CTR_Mode<DES>::Encryption, CTR_Mode<DES>::Decryption>(prng, key, iv, plaintext, ciphertext, recoveredtext);
 			break;
-		case 6:
-			etime = LoopingIV<CBC_CTS_Mode<DES>::Encryption, CBC_CTS_Mode<DES>::Decryption>(prng, key, iv, plaintext, ciphertext, recoveredtext);
-			break;
-		default:
-			wcout << L"'Mode of operation' không hợp lệ!\n";
-			return 0;
 		}
 	}
 	// AES
 	else if (scheme == 2)
 	{
+		// Select key size from screen
 		key_size = SelectKeySize();
 
+		// Validate key's size
 		if (key_size == -1 || (key_size == 64 && mode != 7))
 		{
 			wcout << L"Key size không hợp lệ!" << endl;
-			return 0;
+			exit(1);
 		}
 
+		// Generate key by random, from screen, or from file
 		if (!GenerateSecByteBlock(key, key_size, L"key"))
 		{
 			wcout << L"Đã xảy ra lỗi khi nhập key!\n";
-			return 0;
+			exit(1);
 		}
 
+		// Generate IV by random, from screen, or from file
 		iv_size = AES::BLOCKSIZE;
 		if (!GenerateSecByteBlock(iv, iv_size, L"IV"))
 		{
 			wcout << L"Đã xảy ra lỗi khi nhập IV!\n";
-			return 0;
+			exit(1);
 		}
 
 		// Write key to file
-		StringSource ss(key, key.size(), true, new FileSink("aes_key.key"));
+		StringSource ss_key(key, key.size(), true, new FileSink("key.key"));
+
+		// Write IV to file
+		StringSource ss_iv(iv, iv.size(), true, new FileSink("iv.key"));
 
 		// Read key from file
 		// FileSource fs("aes_key.key", false);
@@ -750,10 +815,10 @@ int main(int argc, char *argv[])
 			etime = LoopingIV<CTR_Mode<AES>::Encryption, CTR_Mode<AES>::Decryption>(prng, key, iv, plaintext, ciphertext, recoveredtext);
 			break;
 		case 6:
-			etime = LoopingIV<CBC_CTS_Mode<AES>::Encryption, CBC_CTS_Mode<AES>::Decryption>(prng, key, iv, plaintext, ciphertext, recoveredtext);
+			etime = LoopingIV<XTS_Mode<AES>::Encryption, XTS_Mode<AES>::Decryption>(prng, key, iv, plaintext, ciphertext, recoveredtext);
 			break;
 		case 7:
-			etime = LoopingIV<XTS_Mode<AES>::Encryption, XTS_Mode<AES>::Decryption>(prng, key, iv, plaintext, ciphertext, recoveredtext);
+			etime = Looping_Authentication<GCM<AES>::Encryption, GCM<AES>::Decryption>(prng, key, iv, plaintext, auth, ciphertext, recoveredtext, recovered_auth);
 			break;
 		default:
 			wcout << L"'Mode of operation' không hợp lệ!\n";
