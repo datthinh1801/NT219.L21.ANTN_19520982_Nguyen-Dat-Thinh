@@ -363,12 +363,12 @@ double *Encrypt_Decrypt_withAuthentication(const SecByteBlock &key, const SecByt
 	// [START ENCRYPTION]
 	int start_e = clock();
 
-	const int TAG_SIZE = 16;
+	const int TAG_SIZE = 8;
 	try
 	{
 		Encryption enc;
 		// Attach key and IV
-		enc.SetKeyWithIV(key, sizeof(key), iv, sizeof(iv));
+		enc.SetKeyWithIV(key, key.size(), iv, iv.size());
 		// Not required for GCM, but required for CCM
 		enc.SpecifyDataLengths(auth.size(), plaintext.size(), 0);
 
@@ -399,13 +399,13 @@ double *Encrypt_Decrypt_withAuthentication(const SecByteBlock &key, const SecByt
 		string encrypted_data = ciphertext.substr(0, ciphertext.size() - TAG_SIZE);
 		string mac = ciphertext.substr(ciphertext.size() - TAG_SIZE);
 
-		GCM<AES>::Decryption dec;
-		// Attach the key and IV
-		dec.SetKeyWithIV(key, sizeof(key), iv, sizeof(iv));
-		dec.SpecifyDataLengths(recovered_auth.size(), encrypted_data.size(), 0);
-
 		// Authenticated data is sent via a clear channel
 		recovered_auth = auth;
+
+		Decryption dec;
+		// Attach the key and IV
+		dec.SetKeyWithIV(key, key.size(), iv, iv.size());
+		dec.SpecifyDataLengths(recovered_auth.size(), encrypted_data.size(), 0);
 
 		AuthenticatedDecryptionFilter df(dec, NULL,
 										 AuthenticatedDecryptionFilter::MAC_AT_BEGIN |
@@ -509,7 +509,10 @@ int SelectMode(bool is_AES)
 
 		// if mode is of type 'int' but not within the valid range
 		if (mode < 1 || (mode > 8 && is_AES) || (mode > 5 && !is_AES))
-			return -1;
+		{
+			wcout << L"Mode không hợp lệ!" << endl;
+			exit(1);
+		}
 
 		// otherwise
 		return mode;
@@ -703,6 +706,7 @@ bool GenerateSecByteBlock(SecByteBlock &block, int block_size, wstring which, in
 		}
 		else if (option == 3)
 		{
+			block = SecByteBlock(block_size);
 			if (scheme == 1 && which == L"key")
 			{
 				FileSource fs("des_key.key", false);
@@ -863,9 +867,10 @@ int main(int argc, char *argv[])
 			exit(1);
 		}
 
-		// Generate IV by random, from screen, or from file
+		// Generate IV
 		if (mode > 1)
 		{
+			// Select IV's size
 			if (mode == 7 || mode == 8)
 			{
 				iv_size = SelectIVSize(mode);
@@ -874,24 +879,19 @@ int main(int argc, char *argv[])
 			{
 				iv_size = AES::BLOCKSIZE;
 			}
+
+			// Generate IV by random, from screen, or from file
 			if (!GenerateSecByteBlock(iv, iv_size, L"IV", scheme))
 			{
 				wcout << L"Đã xảy ra lỗi khi nhập IV!\n";
 				exit(1);
 			}
+			// Write IV to file
+			StringSource ss_iv(iv, iv.size(), true, new FileSink("aes_iv.key"));
 		}
 
 		// Write key to file
 		StringSource ss_key(key, key.size(), true, new FileSink("aes_key.key"));
-
-		// Write IV to file
-		StringSource ss_iv(iv, iv.size(), true, new FileSink("aes_iv.key"));
-
-		// Read key from file
-		// FileSource fs("aes_key.key", false);
-		// CryptoPP::ArraySink bytes_key(key, key_size);
-		// fs.Detach(new Redirector(bytes_key));
-		// fs.Pump(key_size);
 
 		// Decide on the mode
 		switch (mode)
