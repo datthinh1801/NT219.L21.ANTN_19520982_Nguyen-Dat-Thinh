@@ -190,7 +190,7 @@ void Decrypt(const string &cipher, Mode &d, string &recovered)
 // The 'key', 'ciphertext' and 'recovered' will be changed in place.
 // This function returns the time (in ms) to perform DES algorithm in 1 time.
 template <class Encryption, class Decryption>
-double *Encrypt_Decrypt(AutoSeededRandomPool &prng, SecByteBlock &key, string plaintext, string &ciphertext, string &recovered)
+double *Encrypt_Decrypt(const SecByteBlock &key, string plaintext, string &ciphertext, string &recovered)
 {
 	// clock() return the current clock tick of the processor
 	// Get starting clock tick of encryption
@@ -248,7 +248,7 @@ double *Encrypt_Decrypt(AutoSeededRandomPool &prng, SecByteBlock &key, string pl
 // The 'key', iv, 'ciphertext' and 'recovered' will be changed in place.
 // This function return the time (in ms) to perform DES algorithm in 1 time.
 template <class Encryption, class Decryption>
-double *Encrypt_Decrypt_withIV(AutoSeededRandomPool &prng, SecByteBlock &key, SecByteBlock &iv, string plaintext, string &ciphertext, string &recovered)
+double *Encrypt_Decrypt_withIV(const SecByteBlock &key, const SecByteBlock &iv, string plaintext, string &ciphertext, string &recovered)
 {
 	// clock() return the current clock tick of the processor
 	// Get the starting clock tick of encryption
@@ -308,7 +308,7 @@ double *Encrypt_Decrypt_withIV(AutoSeededRandomPool &prng, SecByteBlock &key, Se
 // The number of iteration is pre-defined as 'N_ITER'.
 // This function returns the total execution time (in ms) of N_ITER iterations.
 template <class Encryption, class Decryption>
-double *LoopingIV(AutoSeededRandomPool &prng, SecByteBlock &key, SecByteBlock &iv, string plaintext, string &ciphertext, string &recovered)
+double *Looping_IV(const SecByteBlock &key, const SecByteBlock &iv, string plaintext, string &ciphertext, string &recovered)
 {
 	// first element relates to the encryption time
 	// second element relates to the decryption time
@@ -319,7 +319,7 @@ double *LoopingIV(AutoSeededRandomPool &prng, SecByteBlock &key, SecByteBlock &i
 
 	for (int i = 0; i < N_ITER; ++i)
 	{
-		etime = Encrypt_Decrypt_withIV<Encryption, Decryption>(prng, key, iv, plaintext, ciphertext, recovered);
+		etime = Encrypt_Decrypt_withIV<Encryption, Decryption>(key, iv, plaintext, ciphertext, recovered);
 		sum[0] += etime[0];
 		sum[1] += etime[1];
 	}
@@ -334,7 +334,7 @@ double *LoopingIV(AutoSeededRandomPool &prng, SecByteBlock &key, SecByteBlock &i
 // The number of iteration is pre-defined as 'N_ITER'.
 // This function returns the total execution time (in ms) of N_ITER iterations.
 template <class Encryption, class Decryption>
-double *Looping_nonIV(AutoSeededRandomPool &prng, SecByteBlock &key, string plaintext, string &ciphertext, string &recovered)
+double *Looping_nonIV(const SecByteBlock &key, string plaintext, string &ciphertext, string &recovered)
 {
 	// first element relates to the encryption time
 	// second element relates to the decryption time
@@ -345,7 +345,7 @@ double *Looping_nonIV(AutoSeededRandomPool &prng, SecByteBlock &key, string plai
 
 	for (int i = 0; i < N_ITER; ++i)
 	{
-		etime = Encrypt_Decrypt<Encryption, Decryption>(prng, key, plaintext, ciphertext, recovered);
+		etime = Encrypt_Decrypt<Encryption, Decryption>(key, plaintext, ciphertext, recovered);
 		sum[0] += etime[0];
 		sum[1] += etime[1];
 	}
@@ -355,8 +355,11 @@ double *Looping_nonIV(AutoSeededRandomPool &prng, SecByteBlock &key, string plai
 }
 
 template <class Encryption, class Decryption>
-double *Encrypt_Decrypt_withAuthentication(AutoSeededRandomPool &prng, SecByteBlock &key, SecByteBlock &iv, string plaintext, string auth, string &ciphertext, string &recovered_plaintext, string &recovered_auth)
+double *Encrypt_Decrypt_withAuthentication(const SecByteBlock &key, const SecByteBlock &iv, string plaintext, string auth, string &ciphertext, string &recovered_plaintext, string &recovered_auth)
 {
+	ciphertext.clear();
+	recovered_plaintext.clear();
+
 	// [START ENCRYPTION]
 	int start_e = clock();
 
@@ -383,6 +386,7 @@ double *Encrypt_Decrypt_withAuthentication(AutoSeededRandomPool &prng, SecByteBl
 	catch (CryptoPP::Exception &ex)
 	{
 		wcout << ex.what() << endl;
+		exit(1);
 	}
 	int end_e = clock();
 	// [END ENRYPTION]
@@ -399,11 +403,6 @@ double *Encrypt_Decrypt_withAuthentication(AutoSeededRandomPool &prng, SecByteBl
 		// Attach the key and IV
 		dec.SetKeyWithIV(key, sizeof(key), iv, sizeof(iv));
 		dec.SpecifyDataLengths(recovered_auth.size(), encrypted_data.size(), 0);
-
-		// Sanity checks
-		assert(ciphertext.size() == encrypted_data.size() + mac.size());
-		assert(encrypted_data.size() == plaintext.size());
-		assert(TAG_SIZE == mac.size());
 
 		// Authenticated data is sent via a clear channel
 		recovered_auth = auth;
@@ -434,11 +433,11 @@ double *Encrypt_Decrypt_withAuthentication(AutoSeededRandomPool &prng, SecByteBl
 		{
 			df.Get((CryptoPP::byte *)recovered_plaintext.data(), n);
 		}
-		assert(plaintext == recovered_plaintext);
 	}
 	catch (CryptoPP::Exception &ex)
 	{
 		wcout << ex.what() << endl;
+		exit(1);
 	}
 	int end_d = clock();
 	// [END DECRYPTION]
@@ -450,7 +449,7 @@ double *Encrypt_Decrypt_withAuthentication(AutoSeededRandomPool &prng, SecByteBl
 }
 
 template <class Encryption, class Decryption>
-double *Looping_Authentication(AutoSeededRandomPool &prng, SecByteBlock &key, SecByteBlock &iv, string plaintext, string auth, string &ciphertext, string &recovered_plaintext, string &recovered_auth)
+double *Looping_Authentication(const SecByteBlock &key, const SecByteBlock &iv, string plaintext, string auth, string &ciphertext, string &recovered_plaintext, string &recovered_auth)
 {
 	double *sum = new double[2];
 	double *etime = NULL;
@@ -459,13 +458,23 @@ double *Looping_Authentication(AutoSeededRandomPool &prng, SecByteBlock &key, Se
 
 	for (int i = 0; i < N_ITER; ++i)
 	{
-		etime = Encrypt_Decrypt_withAuthentication<Encryption, Decryption>(prng, key, iv, plaintext, auth, ciphertext, recovered_plaintext, recovered_auth);
+		etime = Encrypt_Decrypt_withAuthentication<Encryption, Decryption>(key, iv, plaintext, auth, ciphertext, recovered_plaintext, recovered_auth);
 		sum[0] += etime[0];
 		sum[1] += etime[1];
 	}
 
 	delete[] etime;
 	return sum;
+}
+
+string GraspAuthenticatedData()
+{
+	wstring wadata;
+	wcout << L"Authenticated data: ";
+	fflush(stdin);
+	getline(wcin, wadata);
+	string adata = ws2s(wadata);
+	return adata;
 }
 
 // Setup for Vietnamese support
@@ -508,7 +517,8 @@ int SelectMode(bool is_AES)
 	catch (...)
 	{
 		// If an error occurs
-		return -1;
+		wcout << L"Mode không hợp lệ!" << endl;
+		exit(1);
 	}
 }
 
@@ -516,9 +526,9 @@ int SelectMode(bool is_AES)
 int SelectScheme()
 {
 	wcout << L"Vui lòng chọn scheme:" << endl;
-	wcout << "(1) DES" << endl;
-	wcout << "(2) AES" << endl;
-	wcout << "> ";
+	wcout << L"(1) DES" << endl;
+	wcout << L"(2) AES" << endl;
+	wcout << L"> ";
 
 	int scheme;
 	try
@@ -527,7 +537,10 @@ int SelectScheme()
 
 		// if scheme if of type 'int' but not of valid values
 		if (scheme != 1 && scheme != 2)
-			return -1;
+		{
+			wcout << L"Scheme không hợp lệ!" << endl;
+			exit(1);
+		}
 
 		// otherwise
 		return scheme;
@@ -535,29 +548,24 @@ int SelectScheme()
 	catch (...)
 	{
 		// if an error occurs
-		return -1;
+		wcout << L"Scheme không hợp lệ!" << endl;
+		exit(1);
 	}
 }
 
 // Select AES key size
-int SelectKeySize()
+int SelectKeySize(int mode)
 {
-	/*
-    |----------|----------|
-    | Key size | # rounds |
-    |----------|----------|
-    | 128 bits | 10       |
-    | 192 bits | 12       |
-    | 256 bits | 14       |
-    |----------|----------|
-    */
 	const int key_sizes[] = {16, 24, 32, 64};
 	wcout << L"Chọn key size cho AES:" << endl;
 	wcout << L"(1) 128 bits ~ 16 bytes (default)\n";
 	wcout << L"(2) 192 bits ~ 24 bytes\n";
 	wcout << L"(3) 256 bits ~ 32 bytes\n";
-	wcout << L"(4) 512 bits ~ 64 bytes (XTS only)\n";
-	wcout << L"\n> ";
+	if (mode == 6)
+	{
+		wcout << L"(4) 512 bits ~ 64 bytes (XTS only)\n";
+	}
+	wcout << L"> ";
 
 	int option;
 	try
@@ -570,13 +578,69 @@ int SelectKeySize()
 		}
 		else
 		{
-			return -1;
+			wcout << L"Key size không hợp lệ!" << endl;
+			exit(1);
 		}
 	}
 	catch (...)
 	{
-		return -1;
+		wcout << L"Key size không hợp lệ!" << endl;
+		exit(1);
 	}
+}
+
+// Select IV's size in AES
+int SelectIVSize(int mode)
+{
+	wcout << L"Chọn IV size hay sử dụng giá trị mặc định:" << endl;
+	wcout << L"(1) Tự chọn" << endl;
+	wcout << L"(2) Sử dụng giá trị mặc định" << endl;
+	wcout << L"> ";
+
+	int option, sz;
+
+	try
+	{
+		wcin >> option;
+
+		if (option == 1)
+		{
+			if (mode == 7)
+			{
+				wcout << L"IV size: ";
+				wcin >> sz;
+			}
+			else if (mode == 8)
+			{
+				wcout << L"IV size [7, 13]: ";
+				wcin >> sz;
+
+				if (sz < 7 || sz > 13)
+				{
+					wcout << L"IV size không hợp lệ!" << endl;
+					exit(1);
+				}
+			}
+		}
+		else if (option == 2)
+		{
+			if (mode == 7)
+			{
+				sz = AES::BLOCKSIZE;
+			}
+			else if (mode == 8)
+			{
+				sz = 8;
+			}
+		}
+	}
+	catch (const std::exception &e)
+	{
+		wcout << L"IV size không hợp lệ!" << endl;
+		exit(1);
+	}
+
+	return sz;
 }
 
 // Acquire a string from console and convert to SecByteBlock in place.
@@ -602,7 +666,8 @@ bool GraspInputFromConsole(SecByteBlock &block, int block_size, wstring which)
 	}
 	catch (...)
 	{
-		return false;
+		wcout << L"Đã xảy ra lỗi trong quá trình nhập!" << endl;
+		exit(1);
 	}
 }
 
@@ -613,7 +678,7 @@ bool GenerateSecByteBlock(SecByteBlock &block, int block_size, wstring which)
 	wcout << L"Nhập " + which + L" hay random " + which + L":\n";
 	wcout << L"(1) Nhập " + which << endl;
 	wcout << L"(2) Random " + which << endl;
-	wcout << L"\n> ";
+	wcout << L"> ";
 
 	int option;
 	try
@@ -637,12 +702,14 @@ bool GenerateSecByteBlock(SecByteBlock &block, int block_size, wstring which)
 		}
 		else
 		{
-			return false;
+			wcout << L"Đã xảy ra lỗi trong quá trình tạo block!" << endl;
+			exit(1);
 		}
 	}
 	catch (...)
 	{
-		return false;
+		wcout << L"Đã xảy ra lỗi trong quá trình tạo block!" << endl;
+		exit(1);
 	}
 }
 
@@ -668,11 +735,6 @@ int main(int argc, char *argv[])
 
 	// Select scheme
 	int scheme = SelectScheme();
-	if (scheme == -1)
-	{
-		wcout << "[-] Invalid scheme!" << endl;
-		exit(1);
-	}
 
 	// Select mode
 	int mode;
@@ -685,25 +747,16 @@ int main(int argc, char *argv[])
 		mode = SelectMode(true);
 	}
 
-	if (mode == -1)
-	{
-		wcout << "[-] Invalid mode!" << endl;
-		exit(1);
-	}
-
 	double *etime = NULL;
 	int key_size, iv_size;
 
 	string auth, recovered_auth;
-	wstring wath;
 
-	if (mode == 7 | mode == 8)
+	// If an authentication mode is selected
+	if (mode == 7 || mode == 8)
 	{
-		wcout << L"Autheticated data : " << endl;
-		fflush(stdin);
-		getline(wcin, wath);
+		auth = GraspAuthenticatedData();
 	}
-	auth = ws2s(wath);
 
 	// DES
 	if (scheme == 1)
@@ -717,13 +770,15 @@ int main(int argc, char *argv[])
 		}
 
 		// Generate IV by random, from screen, or from file
-		iv_size = DES::BLOCKSIZE;
-		if (!GenerateSecByteBlock(iv, iv_size, L"IV"))
+		if (mode > 1)
 		{
-			wcout << L"Đã xãy ra lỗi khi nhập IV!\n";
-			exit(1);
+			iv_size = DES::BLOCKSIZE;
+			if (!GenerateSecByteBlock(iv, iv_size, L"IV"))
+			{
+				wcout << L"Đã xãy ra lỗi khi nhập IV!\n";
+				exit(1);
+			}
 		}
-
 		// Write key to file
 		StringSource ss_key(key, key.size(), true, new FileSink("key.key"));
 
@@ -740,19 +795,19 @@ int main(int argc, char *argv[])
 		switch (mode)
 		{
 		case 1:
-			etime = Looping_nonIV<ECB_Mode<DES>::Encryption, ECB_Mode<DES>::Decryption>(prng, key, plaintext, ciphertext, recoveredtext);
+			etime = Looping_nonIV<ECB_Mode<DES>::Encryption, ECB_Mode<DES>::Decryption>(key, plaintext, ciphertext, recoveredtext);
 			break;
 		case 2:
-			etime = LoopingIV<CBC_Mode<DES>::Encryption, CBC_Mode<DES>::Decryption>(prng, key, iv, plaintext, ciphertext, recoveredtext);
+			etime = Looping_IV<CBC_Mode<DES>::Encryption, CBC_Mode<DES>::Decryption>(key, iv, plaintext, ciphertext, recoveredtext);
 			break;
 		case 3:
-			etime = LoopingIV<CFB_Mode<DES>::Encryption, CFB_Mode<DES>::Decryption>(prng, key, iv, plaintext, ciphertext, recoveredtext);
+			etime = Looping_IV<CFB_Mode<DES>::Encryption, CFB_Mode<DES>::Decryption>(key, iv, plaintext, ciphertext, recoveredtext);
 			break;
 		case 4:
-			etime = LoopingIV<OFB_Mode<DES>::Encryption, OFB_Mode<DES>::Decryption>(prng, key, iv, plaintext, ciphertext, recoveredtext);
+			etime = Looping_IV<OFB_Mode<DES>::Encryption, OFB_Mode<DES>::Decryption>(key, iv, plaintext, ciphertext, recoveredtext);
 			break;
 		case 5:
-			etime = LoopingIV<CTR_Mode<DES>::Encryption, CTR_Mode<DES>::Decryption>(prng, key, iv, plaintext, ciphertext, recoveredtext);
+			etime = Looping_IV<CTR_Mode<DES>::Encryption, CTR_Mode<DES>::Decryption>(key, iv, plaintext, ciphertext, recoveredtext);
 			break;
 		}
 	}
@@ -760,10 +815,10 @@ int main(int argc, char *argv[])
 	else if (scheme == 2)
 	{
 		// Select key size from screen
-		key_size = SelectKeySize();
+		key_size = SelectKeySize(mode);
 
 		// Validate key's size
-		if (key_size == -1 || (key_size == 64 && mode != 7))
+		if (key_size == 64 && mode != 6)
 		{
 			wcout << L"Key size không hợp lệ!" << endl;
 			exit(1);
@@ -777,11 +832,21 @@ int main(int argc, char *argv[])
 		}
 
 		// Generate IV by random, from screen, or from file
-		iv_size = AES::BLOCKSIZE;
-		if (!GenerateSecByteBlock(iv, iv_size, L"IV"))
+		if (mode > 1)
 		{
-			wcout << L"Đã xảy ra lỗi khi nhập IV!\n";
-			exit(1);
+			if (mode == 7 || mode == 8)
+			{
+				iv_size = SelectIVSize(mode);
+			}
+			else
+			{
+				iv_size = AES::BLOCKSIZE;
+			}
+			if (!GenerateSecByteBlock(iv, iv_size, L"IV"))
+			{
+				wcout << L"Đã xảy ra lỗi khi nhập IV!\n";
+				exit(1);
+			}
 		}
 
 		// Write key to file
@@ -800,29 +865,28 @@ int main(int argc, char *argv[])
 		switch (mode)
 		{
 		case 1:
-			etime = Looping_nonIV<ECB_Mode<AES>::Encryption, ECB_Mode<AES>::Decryption>(prng, key, plaintext, ciphertext, recoveredtext);
+			etime = Looping_nonIV<ECB_Mode<AES>::Encryption, ECB_Mode<AES>::Decryption>(key, plaintext, ciphertext, recoveredtext);
 			break;
 		case 2:
-			etime = LoopingIV<CBC_Mode<AES>::Encryption, CBC_Mode<AES>::Decryption>(prng, key, iv, plaintext, ciphertext, recoveredtext);
+			etime = Looping_IV<CBC_Mode<AES>::Encryption, CBC_Mode<AES>::Decryption>(key, iv, plaintext, ciphertext, recoveredtext);
 			break;
 		case 3:
-			etime = LoopingIV<CFB_Mode<AES>::Encryption, CFB_Mode<AES>::Decryption>(prng, key, iv, plaintext, ciphertext, recoveredtext);
+			etime = Looping_IV<CFB_Mode<AES>::Encryption, CFB_Mode<AES>::Decryption>(key, iv, plaintext, ciphertext, recoveredtext);
 			break;
 		case 4:
-			etime = LoopingIV<OFB_Mode<AES>::Encryption, OFB_Mode<AES>::Decryption>(prng, key, iv, plaintext, ciphertext, recoveredtext);
+			etime = Looping_IV<OFB_Mode<AES>::Encryption, OFB_Mode<AES>::Decryption>(key, iv, plaintext, ciphertext, recoveredtext);
 			break;
 		case 5:
-			etime = LoopingIV<CTR_Mode<AES>::Encryption, CTR_Mode<AES>::Decryption>(prng, key, iv, plaintext, ciphertext, recoveredtext);
+			etime = Looping_IV<CTR_Mode<AES>::Encryption, CTR_Mode<AES>::Decryption>(key, iv, plaintext, ciphertext, recoveredtext);
 			break;
 		case 6:
-			etime = LoopingIV<XTS_Mode<AES>::Encryption, XTS_Mode<AES>::Decryption>(prng, key, iv, plaintext, ciphertext, recoveredtext);
+			etime = Looping_IV<XTS_Mode<AES>::Encryption, XTS_Mode<AES>::Decryption>(key, iv, plaintext, ciphertext, recoveredtext);
 			break;
 		case 7:
-			etime = Looping_Authentication<GCM<AES>::Encryption, GCM<AES>::Decryption>(prng, key, iv, plaintext, auth, ciphertext, recoveredtext, recovered_auth);
+			etime = Looping_Authentication<GCM<AES>::Encryption, GCM<AES>::Decryption>(key, iv, plaintext, auth, ciphertext, recoveredtext, recovered_auth);
 			break;
-		default:
-			wcout << L"'Mode of operation' không hợp lệ!\n";
-			return 0;
+		case 8:
+			etime = Looping_Authentication<CCM<AES>::Encryption, CCM<AES>::Decryption>(key, iv, plaintext, auth, ciphertext, recoveredtext, recovered_auth);
 		}
 	}
 	// Otherwise
@@ -846,6 +910,10 @@ int main(int argc, char *argv[])
 	PrettyPrint(ciphertext);
 
 	wcout << L"Recovered text: " << s2ws(recoveredtext) << endl;
+	if (mode == 7 || mode == 8)
+	{
+		wcout << L"Recovered authenticated data: " << s2ws(recovered_auth) << endl;
+	}
 	wcout << "--------------------------------------------------" << endl;
 
 	wcout << L"Tổng thời gian mã hóa trong 10000 vòng: " << etime[0] << " ms" << endl;
