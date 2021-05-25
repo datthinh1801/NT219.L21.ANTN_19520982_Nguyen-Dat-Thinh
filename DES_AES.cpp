@@ -28,6 +28,9 @@ using std::string;
 using std::exit;
 
 #include "cryptopp/cryptlib.h"
+using CryptoPP::AAD_CHANNEL;
+using CryptoPP::BufferedTransformation;
+using CryptoPP::DEFAULT_CHANNEL;
 using CryptoPP::Exception;
 
 #include "cryptopp/hex.h"
@@ -35,6 +38,8 @@ using CryptoPP::HexDecoder;
 using CryptoPP::HexEncoder;
 
 #include "cryptopp/filters.h"
+using CryptoPP::AuthenticatedDecryptionFilter;
+using CryptoPP::AuthenticatedEncryptionFilter;
 using CryptoPP::Redirector;
 using CryptoPP::StreamTransformationFilter;
 using CryptoPP::StringSink;
@@ -57,12 +62,21 @@ using CryptoPP::OFB_Mode;
 #include "cryptopp/xts.h"
 using CryptoPP::XTS;
 
+#include "cryptopp/ccm.h"
+using CryptoPP::CCM;
+
+#include "cryptopp/gcm.h"
+using CryptoPP::GCM;
+using CryptoPP::GCM_TablesOption;
+
 #include "cryptopp/secblock.h"
 using CryptoPP::SecByteBlock;
 
 #include "cryptopp/files.h"
 using CryptoPP::FileSink;
 using CryptoPP::FileSource;
+
+#include <assert.h>
 
 #define N_ITER 10000
 
@@ -177,7 +191,7 @@ void Decrypt(const string &cipher, Mode &d, string &recovered)
 // The 'key', 'ciphertext' and 'recovered' will be changed in place.
 // This function returns the time (in ms) to perform DES algorithm in 1 time.
 template <class Encryption, class Decryption>
-double *ED_nonIV(AutoSeededRandomPool &prng, SecByteBlock &key, string plaintext, string &ciphertext, string &recovered)
+double *Encrypt_Decrypt(AutoSeededRandomPool &prng, SecByteBlock &key, string plaintext, string &ciphertext, string &recovered)
 {
 	// clock() return the current clock tick of the processor
 	// Get starting clock tick of encryption
@@ -235,7 +249,7 @@ double *ED_nonIV(AutoSeededRandomPool &prng, SecByteBlock &key, string plaintext
 // The 'key', iv, 'ciphertext' and 'recovered' will be changed in place.
 // This function return the time (in ms) to perform DES algorithm in 1 time.
 template <class Encryption, class Decryption>
-double *ED_IV(AutoSeededRandomPool &prng, SecByteBlock &key, SecByteBlock &iv, string plaintext, string &ciphertext, string &recovered)
+double *Encrypt_Decrypt_withIV(AutoSeededRandomPool &prng, SecByteBlock &key, SecByteBlock &iv, string plaintext, string &ciphertext, string &recovered)
 {
 	// clock() return the current clock tick of the processor
 	// Get the starting clock tick of encryption
@@ -306,7 +320,7 @@ double *LoopingIV(AutoSeededRandomPool &prng, SecByteBlock &key, SecByteBlock &i
 
 	for (int i = 0; i < N_ITER; ++i)
 	{
-		etime = ED_IV<Encryption, Decryption>(prng, key, iv, plaintext, ciphertext, recovered);
+		etime = Encrypt_Decrypt_withIV<Encryption, Decryption>(prng, key, iv, plaintext, ciphertext, recovered);
 		sum[0] += etime[0];
 		sum[1] += etime[1];
 	}
@@ -332,7 +346,7 @@ double *Looping_nonIV(AutoSeededRandomPool &prng, SecByteBlock &key, string plai
 
 	for (int i = 0; i < N_ITER; ++i)
 	{
-		etime = ED_nonIV<Encryption, Decryption>(prng, key, plaintext, ciphertext, recovered);
+		etime = Encrypt_Decrypt<Encryption, Decryption>(prng, key, plaintext, ciphertext, recovered);
 		sum[0] += etime[0];
 		sum[1] += etime[1];
 	}
@@ -341,67 +355,89 @@ double *Looping_nonIV(AutoSeededRandomPool &prng, SecByteBlock &key, string plai
 	return sum;
 }
 
-/*
-double *XTS(AutoSeededRandomPool &prng, SecByteBlock &key, SecByteBlock &iv, string plaintext, string &ciphertext, string &recovered)
+template <class Encryption, class Decryption>
+double *Encrypt_Decrypt_withAuthentication(AutoSeededRandomPool &prng, SecByteBlock &key, SecByteBlock &iv, string plaintext, string auth, string &ciphertext, string &recovered_plaintext, string &recovered_auth)
 {
-	double *etime = new double[2];
-	etime[0] = 0;
-	etime[1] = 0;
-
-	// Start encryption
+	// [START ENCRYPTION]
 	int start_e = clock();
-	// XTS_Mode<AES>::Encryption enc;
-	// enc.SetKeyWithIV(key, key.size(), iv);
-	// StringSource ss(plaintext, true,
-	// 				new StreamTransformationFilter(enc,
-	// 											   new StringSink(ciphertext),
-	// 											   StreamTransformationFilter::NO_PADDING));
-	int end_e = clock();
-	etime[0] = double(end_e - start_e) / CLOCKS_PER_SEC * 1000;
 
-	// Start decryption
-	int start_d = clock();
-	// XTS_Mode<AES>::Decryption dec;
-	// dec.SetKeyWithIV(key, key.size(), iv));
-	// StringSource ss1(ciphertext, true,
-	// 				 new StreamTransformationFilter(dec,
-	// 												new StringSink(recovered),
-	// 												StreamTransformationFilter::NO_PADDING));
-	int end_d = clock();
-	etime[1] = double(end_d - start_d) / CLOCKS_PER_SEC * 1000;
-	return etime;
-}
-
-template <class Scheme>
-double *Looping_XTS(AutoSeededRandomPool &prng, SecByteBlock &key, SecByteBlock &iv, string plaintext, string &ciphertext, string &recovered)
-{
-	double *sum = new double[2];
-	double *etime = NULL;
-	sum[0] = 0;
-	sum[1] = 0;
-	for (int i = 0; i < N_ITER; ++i)
+	const int TAG_SIZE = 16;
+	try
 	{
-		// etime = XTS<Scheme>(prng, key, iv, plaintext, ciphertext, recovered);
-		sum[0] += etime[0];
-		sum[1] += etime[1];
+		Encryption enc;
+		enc.SetKeyWithIV(key, sizeof(key), iv, sizeof(iv));
+		enc.SpecifyDataLengths(auth.size(), plaintext.size(), 0);
+
+		AuthenticatedEncryptionFilter ef(enc,
+										 new StringSink(ciphertext));
+
+		ef.ChannelPut(AAD_CHANNEL, (const CryptoPP::byte *)auth.data(), auth.size());
+		ef.ChannelMessageEnd(AAD_CHANNEL);
+
+		ef.ChannelPut(DEFAULT_CHANNEL, (const CryptoPP::byte *)plaintext.data(), plaintext.size());
+		ef.ChannelMessageEnd(DEFAULT_CHANNEL);
 	}
+	catch (CryptoPP::Exception &ex)
+	{
+		wcout << ex.what() << endl;
+	}
+	int end_e = clock();
+	// [END ENRYPTION]
 
-	delete[] etime;
-	return sum;
+	// [START DECRYPTION]
+	int start_d = clock();
+	try
+	{
+		string encrypted_data = ciphertext.substr(0, ciphertext.size() - TAG_SIZE);
+		string mac = ciphertext.substr(ciphertext.size() - TAG_SIZE);
+
+		GCM<AES>::Decryption dec;
+		dec.SetKeyWithIV(key, sizeof(key), iv, sizeof(iv));
+		dec.SpecifyDataLengths(recovered_auth.size(), encrypted_data.size(), 0);
+
+		recovered_auth = auth;
+
+		AuthenticatedDecryptionFilter df(dec, NULL,
+										 AuthenticatedDecryptionFilter::MAC_AT_BEGIN |
+											 AuthenticatedDecryptionFilter::THROW_EXCEPTION,
+										 TAG_SIZE);
+		df.ChannelPut(DEFAULT_CHANNEL, (const CryptoPP::byte *)mac.data(), mac.size());
+		df.ChannelPut(AAD_CHANNEL, (const CryptoPP::byte *)auth.data(), auth.size());
+		df.ChannelPut(DEFAULT_CHANNEL, (const CryptoPP::byte *)encrypted_data.data(), encrypted_data.size());
+
+		df.ChannelMessageEnd(AAD_CHANNEL);
+		df.ChannelMessageEnd(DEFAULT_CHANNEL);
+
+		// Check data's integrity
+		bool b = false;
+		b = df.GetLastResult();
+		assert(true == b);
+
+		df.SetRetrievalChannel(DEFAULT_CHANNEL);
+		size_t n = (size_t)df.MaxRetrievable();
+		recovered_plaintext.resize(n);
+
+		if (n > 0)
+		{
+			df.Get((CryptoPP::byte *)recovered_plaintext.data(), n);
+		}
+		assert(plaintext == recovered_plaintext);
+	}
+	catch (CryptoPP::Exception &ex)
+	{
+		wcout << ex.what() << endl;
+	}
+	int end_d = clock();
+	// [END DECRYPTION]
+
+	double *etime = new double[2];
+	etime[0] = double(end_e - start_e) / CLOCKS_PER_SEC * 1000;
+	etime[1] = double(end_d - start_d) / CLOCKS_PER_SEC * 1000;
+	return etime
 }
-*/
 
-template <class Scheme>
-double *GCM(AutoSeededRandomPool &prng, SecByteBlock &key, string plaintext, string &ciphertext, string &recovered)
-{
-}
-
-template <class Scheme>
-double *Looping_GCM(AutoSeededRandomPool &prng, SecByteBlock &key, string plaintext, string &ciphertext, string &recovered)
-{
-}
-
-double *Looping_CCM(AutoSeededRandomPool &prng, SecByteBlock &key, string plaintext, string &ciphertext, string &recovered)
+template <class Encryption, class Decryption>
+double *Looping_Authentication(AutoSeededRandomPool &prng, SecByteBlock &key, string plaintext, string auth, string &ciphertext, string &recovered)
 {
 }
 
@@ -724,6 +760,7 @@ int main(int argc, char *argv[])
 			return 0;
 		}
 	}
+	// Otherwise
 	else
 	{
 		wcout << L"Scheme không hợp lệ" << endl;
