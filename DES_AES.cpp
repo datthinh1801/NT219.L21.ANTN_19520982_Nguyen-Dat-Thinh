@@ -54,6 +54,9 @@ using CryptoPP::CTR_Mode;
 using CryptoPP::ECB_Mode;
 using CryptoPP::OFB_Mode;
 
+#include "cryptopp/xts.h"
+using CryptoPP::XTS;
+
 #include "cryptopp/secblock.h"
 using CryptoPP::SecByteBlock;
 
@@ -133,8 +136,16 @@ void Encrypt(const string &plain, Mode &e, string &cipher)
 	// StreamTransformationFilter adds padding and invokes the Encryption object `e`
 	// to perform encryption on the plaintext 'plain'.
 	// The result (recovered plaintext) is stored in 'recovered' variable.
-	StringSource(plain, true,
-				 new StreamTransformationFilter(e, new StringSink(cipher)));
+	try
+	{
+		StringSource(plain, true,
+					 new StreamTransformationFilter(e, new StringSink(cipher)));
+	}
+	catch (const CryptoPP::Exception &ex)
+	{
+		wcout << ex.what() << endl;
+		exit(1);
+	}
 }
 
 // a template for encryption of various modes of operation
@@ -150,9 +161,17 @@ void Decrypt(const string &cipher, Mode &d, string &recovered)
 	// StreamTransformationFilter removes padding and invokes the Decryption object `d`
 	// to perform decryption on the ciphertext 'cipher'.
 	// The result (recovered plaintext) is stored in 'recovered' variable.
-	StringSource(cipher, true,
-				 new StreamTransformationFilter(d,
-												new StringSink(recovered)));
+	try
+	{
+		StringSource(cipher, true,
+					 new StreamTransformationFilter(d,
+													new StringSink(recovered)));
+	}
+	catch (const CryptoPP::Exception &ex)
+	{
+		wcout << ex.what() << endl;
+		exit(1);
+	}
 }
 
 // The 'key', 'ciphertext' and 'recovered' will be changed in place.
@@ -164,13 +183,18 @@ double *ED_nonIV(AutoSeededRandomPool &prng, SecByteBlock &key, string plaintext
 	// Get starting clock tick of encryption
 	int start_e = clock();
 
-	// Generate new key
-	// prng.GenerateBlock(key, sizeof(key));
-
 	// Declare new Encryption object
 	Encryption e;
 	// Attach the key to the Encryption object
-	e.SetKey(key, key.size());
+	try
+	{
+		e.SetKey(key, key.size());
+	}
+	catch (CryptoPP::Exception &ex)
+	{
+		wcout << ex.what() << endl;
+		exit(1);
+	}
 	// Perform encryption
 	Encrypt<Encryption>(plaintext, e, ciphertext);
 
@@ -183,7 +207,15 @@ double *ED_nonIV(AutoSeededRandomPool &prng, SecByteBlock &key, string plaintext
 	// Declare the new Decryption object
 	Decryption d;
 	// Attach the key to the Decryption object
-	d.SetKey(key, key.size());
+	try
+	{
+		d.SetKey(key, key.size());
+	}
+	catch (const CryptoPP::Exception &ex)
+	{
+		wcout << ex.what() << endl;
+		exit(1);
+	}
 	// Perform decryption
 	Decrypt<Decryption>(ciphertext, d, recovered);
 
@@ -209,16 +241,19 @@ double *ED_IV(AutoSeededRandomPool &prng, SecByteBlock &key, SecByteBlock &iv, s
 	// Get the starting clock tick of encryption
 	int start_e = clock();
 
-	// Generate new key
-	// prng.GenerateBlock(key, sizeof(key));
-
-	// Generate IV
-	prng.GenerateBlock(iv, iv.size());
-
 	// Declare new Encryption object
 	Encryption e;
 	// Attach the key to the Encryption object
-	e.SetKeyWithIV(key, key.size(), iv);
+	try
+	{
+		e.SetKeyWithIV(key, key.size(), iv);
+	}
+	catch (const CryptoPP::Exception &ex)
+	{
+		wcout << ex.what() << endl;
+		exit(1);
+	}
+
 	// Perform encryption
 	Encrypt<Encryption>(plaintext, e, ciphertext);
 
@@ -231,7 +266,15 @@ double *ED_IV(AutoSeededRandomPool &prng, SecByteBlock &key, SecByteBlock &iv, s
 	// Declare the new Decryption object
 	Decryption d;
 	// Attach the key to the decryption object
-	d.SetKeyWithIV(key, key.size(), iv);
+	try
+	{
+		d.SetKeyWithIV(key, key.size(), iv);
+	}
+	catch (const CryptoPP::Exception &ex)
+	{
+		wcout << ex.what() << endl;
+		exit(1);
+	}
 	// Perform decryption
 	Decrypt<Decryption>(ciphertext, d, recovered);
 
@@ -298,7 +341,71 @@ double *Looping_nonIV(AutoSeededRandomPool &prng, SecByteBlock &key, string plai
 	return sum;
 }
 
-// Setup for Vietnamese language support
+/*
+double *XTS(AutoSeededRandomPool &prng, SecByteBlock &key, SecByteBlock &iv, string plaintext, string &ciphertext, string &recovered)
+{
+	double *etime = new double[2];
+	etime[0] = 0;
+	etime[1] = 0;
+
+	// Start encryption
+	int start_e = clock();
+	// XTS_Mode<AES>::Encryption enc;
+	// enc.SetKeyWithIV(key, key.size(), iv);
+	// StringSource ss(plaintext, true,
+	// 				new StreamTransformationFilter(enc,
+	// 											   new StringSink(ciphertext),
+	// 											   StreamTransformationFilter::NO_PADDING));
+	int end_e = clock();
+	etime[0] = double(end_e - start_e) / CLOCKS_PER_SEC * 1000;
+
+	// Start decryption
+	int start_d = clock();
+	// XTS_Mode<AES>::Decryption dec;
+	// dec.SetKeyWithIV(key, key.size(), iv));
+	// StringSource ss1(ciphertext, true,
+	// 				 new StreamTransformationFilter(dec,
+	// 												new StringSink(recovered),
+	// 												StreamTransformationFilter::NO_PADDING));
+	int end_d = clock();
+	etime[1] = double(end_d - start_d) / CLOCKS_PER_SEC * 1000;
+	return etime;
+}
+
+template <class Scheme>
+double *Looping_XTS(AutoSeededRandomPool &prng, SecByteBlock &key, SecByteBlock &iv, string plaintext, string &ciphertext, string &recovered)
+{
+	double *sum = new double[2];
+	double *etime = NULL;
+	sum[0] = 0;
+	sum[1] = 0;
+	for (int i = 0; i < N_ITER; ++i)
+	{
+		// etime = XTS<Scheme>(prng, key, iv, plaintext, ciphertext, recovered);
+		sum[0] += etime[0];
+		sum[1] += etime[1];
+	}
+
+	delete[] etime;
+	return sum;
+}
+*/
+
+template <class Scheme>
+double *GCM(AutoSeededRandomPool &prng, SecByteBlock &key, string plaintext, string &ciphertext, string &recovered)
+{
+}
+
+template <class Scheme>
+double *Looping_GCM(AutoSeededRandomPool &prng, SecByteBlock &key, string plaintext, string &ciphertext, string &recovered)
+{
+}
+
+double *Looping_CCM(AutoSeededRandomPool &prng, SecByteBlock &key, string plaintext, string &ciphertext, string &recovered)
+{
+}
+
+// Setup for Vietnamese support
 void SetupVietnameseSupport()
 {
 	_setmode(_fileno(stdin), _O_U16TEXT);
@@ -316,6 +423,9 @@ int SelectMode()
 	wcout << L"(4) OFB\n";
 	wcout << L"(5) CTR\n";
 	wcout << L"(6) CBC_CTS\n";
+	wcout << L"(7) XTS\n";
+	wcout << L"(8) GCM\n";
+	wcout << L"(9) CCM\n";
 	wcout << L"> ";
 
 	try
@@ -323,7 +433,7 @@ int SelectMode()
 		wcin >> mode;
 
 		// if mode is of type 'int' but not within the valid range
-		if (mode < 1 || mode > 6)
+		if (mode < 1 || mode > 9)
 			return -1;
 
 		// otherwise
@@ -375,11 +485,12 @@ int SelectKeySize()
     | 256 bits | 14       |
     |----------|----------|
     */
-	const int key_sizes[] = {16, 24, 32};
+	const int key_sizes[] = {16, 24, 32, 64};
 	wcout << L"Chọn key size cho AES:" << endl;
 	wcout << L"(1) 128 bits ~ 16 bytes (default)\n";
 	wcout << L"(2) 192 bits ~ 24 bytes\n";
 	wcout << L"(3) 256 bits ~ 32 bytes\n";
+	wcout << L"(4) 512 bits ~ 64 bytes (XTS only)\n";
 	wcout << L"\n> ";
 
 	int option;
@@ -387,7 +498,7 @@ int SelectKeySize()
 	{
 		wcin >> option;
 
-		if (option >= 1 && option <= 3)
+		if (option >= 1 && option <= 4)
 		{
 			return key_sizes[option - 1];
 		}
@@ -471,7 +582,7 @@ bool GenerateSecByteBlock(SecByteBlock &block, int block_size, wstring which)
 
 int main(int argc, char *argv[])
 {
-	// Setup for Vietnamese language support
+	// Setup for Vietnamese support
 	SetupVietnameseSupport();
 
 	// Declaration
@@ -517,7 +628,7 @@ int main(int argc, char *argv[])
 		}
 
 		// Write key to file
-		StringSource ss(key, key.size(), true, new FileSink("des_key.key"));
+		StringSource ss(key, key.size(), true, new FileSink("key.key"));
 
 		// Read key from file
 		// FileSource fs("des_key.key", false);
@@ -556,7 +667,7 @@ int main(int argc, char *argv[])
 	{
 		key_size = SelectKeySize();
 
-		if (key_size == -1)
+		if (key_size == -1 || (key_size == 64 && mode != 7))
 		{
 			wcout << L"Key size không hợp lệ!" << endl;
 			return 0;
@@ -604,6 +715,9 @@ int main(int argc, char *argv[])
 			break;
 		case 6:
 			etime = LoopingIV<CBC_CTS_Mode<AES>::Encryption, CBC_CTS_Mode<AES>::Decryption>(prng, key, iv, plaintext, ciphertext, recoveredtext);
+			break;
+		case 7:
+			etime = LoopingIV<XTS_Mode<AES>::Encryption, XTS_Mode<AES>::Decryption>(prng, key, iv, plaintext, ciphertext, recoveredtext);
 			break;
 		default:
 			wcout << L"'Mode of operation' không hợp lệ!\n";
