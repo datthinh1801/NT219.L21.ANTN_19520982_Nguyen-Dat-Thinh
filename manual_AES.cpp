@@ -551,6 +551,7 @@ bool SelectInputOption(vector<vector<unsigned char>> &block, wstring which)
         return false;
     }
 }
+
 int main()
 {
     // Setup for Vietnamese support
