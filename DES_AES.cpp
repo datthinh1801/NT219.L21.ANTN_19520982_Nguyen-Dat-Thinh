@@ -561,12 +561,16 @@ int SelectKeySize(int mode)
 {
 	const int key_sizes[] = {16, 24, 32, 64};
 	wcout << L"Chọn key size cho AES:" << endl;
-	wcout << L"(1) 128 bits ~ 16 bytes (default)\n";
-	wcout << L"(2) 192 bits ~ 24 bytes\n";
-	wcout << L"(3) 256 bits ~ 32 bytes\n";
+	if (mode != 6)
+	{
+		wcout << L"(1) 128 bits ~ 16 bytes (default)\n";
+		wcout << L"(2) 192 bits ~ 24 bytes\n";
+		wcout << L"(3) 256 bits ~ 32 bytes\n";
+	}
 	if (mode == 6)
 	{
-		wcout << L"(4) 512 bits ~ 64 bytes (XTS only)\n";
+		wcout << L"(1) 256 bits ~ 32 bytes\n";
+		wcout << L"(2) 512 bits ~ 64 bytes\n";
 	}
 	wcout << L"> ";
 
@@ -575,9 +579,13 @@ int SelectKeySize(int mode)
 	{
 		wcin >> option;
 
-		if (option >= 1 && option <= 4)
+		if (mode != 6 && option >= 1 && option <= 3)
 		{
 			return key_sizes[option - 1];
+		}
+		else if (mode == 6 && option >= 1 && option <= 2)
+		{
+			return key_sizes[option + 1];
 		}
 		else
 		{
@@ -904,20 +912,25 @@ int main(int argc, char *argv[])
 	// Display an example of the algorithm in addition to the estimated time if inputs are valid.
 	wcout << endl;
 	wcout << L"Plaintext: " << wplaintext << endl;
+	wcout << endl;
 
 	wcout << L"Key: ";
 	PrettyPrint(key);
+	wcout << endl;
 
 	if (mode > 1)
 	{
 		wcout << L"IV: ";
 		PrettyPrint(iv);
+		wcout << endl;
 	}
 
 	wcout << L"Ciphertext: ";
 	PrettyPrint(ciphertext);
+	wcout << endl;
 
 	wcout << L"Recovered text: " << s2ws(recoveredtext) << endl;
+	wcout << endl;
 	if (mode == 7 || mode == 8)
 	{
 		wcout << L"Recovered authenticated data: " << s2ws(recovered_auth) << endl;
