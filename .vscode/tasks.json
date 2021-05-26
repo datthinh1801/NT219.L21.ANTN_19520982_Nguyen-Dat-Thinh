@@ -4,24 +4,48 @@
 		{
 			"type": "shell",
 			"label": "C/C++: g++.exe build active file",
-			"command": "D:\\MSYS2 64bit\\mingw64\\bin\\g++.exe",
-			"args": [
-				"-g2", // optimization option
-				"-O3", // optimization option
-				"-DNDEBUG",
-				"${file}", //file to compile
-				"-o", //output file
-				"${fileDirname}\\${fileBasenameNoExtension}.exe", //output filename
-				"-D_WIN32_WINNT=_WIN32_WINNT_WIN10", //option optimized for windows 10
-				"-pthread", //same as msys2
-				"-L${workspaceFolder}\\lib", //library directory
-				"-l:libcryptopp.a", //library file
-				"-I${workspaceFolder}\\include", // use this for ease of #include
-				"-Wall",
-				"-w"	// suppress all warnings
-			],
-			"options": {
-				"cwd": "D:\\MSYS2 64bit\\mingw64\\bin"
+			"windows": {
+				"command": "D:\\MSYS2 64bit\\mingw64\\bin\\g++.exe",
+				"options": {
+					"cwd": "D:\\MSYS2 64bit\\mingw64\\bin"
+				},
+				"args": [
+					"-g2", // optimization option
+					"-O3", // optimization option
+					"-DNDEBUG",
+					"${file}", //file to compile
+					"-o", //output file
+					"${fileDirname}\\${fileBasenameNoExtension}.exe", //output filename
+					"-D_WIN32_WINNT=_WIN32_WINNT_WIN10", //option optimized for windows 10
+					"-pthread", //same as msys2
+					"-L${workspaceFolder}\\lib", //library directory
+					"-l:libcryptopp.a", //library file
+					"-I${workspaceFolder}\\include", // use this for ease of #include
+					"-Wall",
+					"-w" // suppress all warnings
+				],
+				"detail": "compiler: D:\\MSYS2 64bit\\mingw64\\bin\\g++.exe",
+			},
+			"linux": {
+				"command": "/usr/share/g++",
+				"options": {
+					"cwd": "${workspaceFolder}",
+				},
+				"args": [
+					"-g2", // optimization option
+					"-O3", // optimization option
+					"-DNDEBUG",
+					"${file}", //file to compile
+					"-o", //output file
+					"${fileDirname}\\${fileBasenameNoExtension}.exe", //output filename
+					"-pthread", //same as msys2
+					"-L${workspaceFolder}\\lib", //library directory
+					"-l:libcryptopp.a", //library file
+					"-I${workspaceFolder}\\include", // use this for ease of #include
+					"-Wall",
+					"-w" // suppress all warnings
+				],
+				"detail": "compiler: /usr/share/g++",
 			},
 			"problemMatcher": [
 				"$gcc"
@@ -30,7 +54,6 @@
 				"kind": "build",
 				"isDefault": true
 			},
-			"detail": "compiler: \"D:\\MSYS2 64bit\\mingw64\\bin\\g++.exe\""
 		}
 	]
 }
