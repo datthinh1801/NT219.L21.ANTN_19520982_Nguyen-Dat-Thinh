@@ -648,7 +648,7 @@ int SelectIVSize(int mode)
 
 // Acquire a string from console and convert to SecByteBlock in place.
 // Return true if succeed.
-bool GraspInputFromConsole(SecByteBlock &block, int block_size, wstring which)
+void GraspInputFromConsole(SecByteBlock &block, int block_size, wstring which)
 {
 	try
 	{
@@ -664,8 +664,6 @@ bool GraspInputFromConsole(SecByteBlock &block, int block_size, wstring which)
 		CryptoPP::ArraySink bytes_block(block, block_size);
 		ss.Detach(new Redirector(bytes_block));
 		ss.Pump(block_size);
-
-		return true;
 	}
 	catch (...)
 	{
@@ -676,7 +674,7 @@ bool GraspInputFromConsole(SecByteBlock &block, int block_size, wstring which)
 
 // Generate the key/IV based on option (manual or random).
 // Return true if succeed.
-bool GenerateSecByteBlock(SecByteBlock &block, int block_size, wstring which, int scheme)
+void GenerateSecByteBlock(SecByteBlock &block, int block_size, wstring which, int scheme)
 {
 	wcout << L"Nhập " + which + L", random hay đọc " + which + L" từ file:\n";
 	wcout << L"(1) Nhập " + which << endl;
@@ -692,17 +690,13 @@ bool GenerateSecByteBlock(SecByteBlock &block, int block_size, wstring which, in
 		if (option == 1)
 		{
 			block = SecByteBlock(block_size);
-			if (GraspInputFromConsole(block, block_size, which))
-				return true;
-			else
-				return false;
+			GraspInputFromConsole(block, block_size, which);
 		}
 		else if (option == 2)
 		{
 			AutoSeededRandomPool prng;
 			block = SecByteBlock(block_size);
 			prng.GenerateBlock(block, block_size);
-			return true;
 		}
 		else if (option == 3)
 		{
@@ -738,7 +732,7 @@ bool GenerateSecByteBlock(SecByteBlock &block, int block_size, wstring which, in
 		}
 		else
 		{
-			wcout << L"Đã xảy ra lỗi trong quá trình tạo block!" << endl;
+			wcout << L"Lựa chọn không hợp lệ!" << endl;
 			exit(1);
 		}
 	}
@@ -799,33 +793,19 @@ int main(int argc, char *argv[])
 	{
 		// Generate key by random, from screen, or from file
 		key_size = DES::DEFAULT_KEYLENGTH;
-		if (!GenerateSecByteBlock(key, key_size, L"key", scheme))
-		{
-			wcout << L"Đã xảy ra lỗi khi nhập key!\n";
-			exit(1);
-		}
+		GenerateSecByteBlock(key, key_size, L"key", scheme);
 
 		// Generate IV by random, from screen, or from file
 		if (mode > 1)
 		{
 			iv_size = DES::BLOCKSIZE;
-			if (!GenerateSecByteBlock(iv, iv_size, L"IV", scheme))
-			{
-				wcout << L"Đã xãy ra lỗi khi nhập IV!\n";
-				exit(1);
-			}
+			GenerateSecByteBlock(iv, iv_size, L"IV", scheme);
+
+			// Write IV to file
+			StringSource ss_iv(iv, iv.size(), true, new FileSink("des_iv.key"));
 		}
 		// Write key to file
 		StringSource ss_key(key, key.size(), true, new FileSink("des_key.key"));
-
-		// Write IV to file
-		StringSource ss_iv(iv, iv.size(), true, new FileSink("des_iv.key"));
-
-		// Read key from file
-		// FileSource fs("des_key.key", false);
-		// CryptoPP::ArraySink bytes_key(key, key_size);
-		// fs.Detach(new Redirector(bytes_key));
-		// fs.Pump(key_size);
 
 		// Decide on the mode
 		switch (mode)
@@ -861,11 +841,7 @@ int main(int argc, char *argv[])
 		}
 
 		// Generate key by random, from screen, or from file
-		if (!GenerateSecByteBlock(key, key_size, L"key", scheme))
-		{
-			wcout << L"Đã xảy ra lỗi khi nhập key!\n";
-			exit(1);
-		}
+		GenerateSecByteBlock(key, key_size, L"key", scheme);
 
 		// Generate IV
 		if (mode > 1)
@@ -881,11 +857,8 @@ int main(int argc, char *argv[])
 			}
 
 			// Generate IV by random, from screen, or from file
-			if (!GenerateSecByteBlock(iv, iv_size, L"IV", scheme))
-			{
-				wcout << L"Đã xảy ra lỗi khi nhập IV!\n";
-				exit(1);
-			}
+			GenerateSecByteBlock(iv, iv_size, L"IV", scheme);
+
 			// Write IV to file
 			StringSource ss_iv(iv, iv.size(), true, new FileSink("aes_iv.key"));
 		}
@@ -935,8 +908,11 @@ int main(int argc, char *argv[])
 	wcout << L"Key: ";
 	PrettyPrint(key);
 
-	wcout << L"IV: ";
-	PrettyPrint(iv);
+	if (mode > 1)
+	{
+		wcout << L"IV: ";
+		PrettyPrint(iv);
+	}
 
 	wcout << L"Ciphertext: ";
 	PrettyPrint(ciphertext);
