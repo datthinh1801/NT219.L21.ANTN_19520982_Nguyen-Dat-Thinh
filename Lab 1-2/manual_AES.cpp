@@ -94,6 +94,18 @@ void PrintMatrix(const vector<vector<unsigned char>> &block)
     }
 }
 
+void PrintHexString(const vector<vector<unsigned char>> &block)
+{
+    for (int col = 0; col < block[0].size(); ++col)
+    {
+        for (int row = 0; row < 4; ++row)
+        {
+            wcout << setfill(L'0') << setw(2) << hex << uppercase << (unsigned int)block[row][col];
+        }
+    }
+    wcout << endl;
+}
+
 // Rotate a word circularly
 // This word is the first word of the block which is passed to the function
 vector<vector<unsigned char>> &RotWord(vector<vector<unsigned char>> &block)
@@ -202,21 +214,16 @@ vector<vector<unsigned char>> &AddPadding(vector<vector<unsigned char>> &block)
 {
     // Add padding if there is an incomplete word
     int max_size = max(max(block[0].size(), block[1].size()), max(block[2].size(), block[3].size()));
+    while (max_size % 4 > 0)
+    {
+        ++max_size;
+    }
+
     for (int i = 0; i < 4; ++i)
     {
         while (block[i].size() < max_size)
         {
             block[i].push_back(0);
-        }
-    }
-
-    // while the block size is not a product of 16
-    while (block[0].size() % 4 > 0)
-    {
-        // Add NULL padding
-        for (int i = 0; i < 4; ++i)
-        {
-            block[i].push_back(0x0);
         }
     }
 
@@ -348,8 +355,6 @@ vector<vector<unsigned char>> KeyExpansion(const vector<vector<unsigned char>> &
 
     for (int i = 4; i < 44; ++i)
     {
-        temp.clear();
-
         // Extract the last word of the expanded_key
         // temp = w[i - 1]
         for (int j = 0; j < 4; ++j)
@@ -370,7 +375,7 @@ vector<vector<unsigned char>> KeyExpansion(const vector<vector<unsigned char>> &
         // w[i] = w[i - 4] ^ temp
         for (int j = 0; j < 4; ++j)
         {
-            expanded_key[j].push_back(expanded_key[j][i - 4] ^ temp[j][0]);
+            expanded_key[j].push_back(expanded_key[j][i - 4] ^ temp[j].back());
         }
     }
 
@@ -506,7 +511,7 @@ vector<vector<unsigned char>> GetBlockFromConsole(wstring which)
 {
     wstring winput;
     string input;
-    wcout << L"Vui lòng nhập " + which + L" : ";
+    wcout << L"Vui lòng nhập " + which + L": ";
     getline(wcin, winput);
     input = ws2s(winput);
     auto block = ConvertStringToBlock(input);
@@ -525,10 +530,10 @@ vector<vector<unsigned char>> GetBlockFromConsole(wstring which)
 bool SelectInputOption(vector<vector<unsigned char>> &block, wstring which)
 {
     int option;
-    wcout << L"Nhập " + which + L" hay random " + which + L" :\n";
+    wcout << L"Nhập " + which + L" hay random " + which + L":\n";
     wcout << L"(1) Nhập " + which << endl;
     wcout << L"(2) Random " + which << endl;
-    wcout << L"\n> ";
+    wcout << L"> ";
 
     try
     {
@@ -566,7 +571,7 @@ int main()
     plaintext = ws2s(wplaintext);
 
     // Key generation
-    vector<vector<unsigned char>> key;
+    vector<vector<unsigned char>> key(4);
     if (!SelectInputOption(key, L"key"))
     {
         wcout << L"Có lỗi xảy ra trong quá trình tạo key!" << endl;
@@ -583,18 +588,16 @@ int main()
 
     // Report parameters
     wcout << L"Plaintext: " << wplaintext << endl;
-    wcout << L"Key:\n";
-    PrintMatrix(key);
-    wcout << endl;
-    wcout << L"IV:\n";
-    PrintMatrix(iv);
-    wcout << endl;
+    wcout << L"Key: ";
+    PrintHexString(key);
+
+    wcout << L"IV: ";
+    PrintHexString(iv);
 
     // Perform encryption
     auto cipher_block = Encrypt(plaintext, key, iv);
-    std::wcout << L"Cipher block:\n";
-    PrintMatrix(cipher_block);
-    std::wcout << endl;
+    std::wcout << L"Ciphertext: ";
+    PrintHexString(cipher_block);
 
     // Perform decryption
     string recovered_string = Decrypt(cipher_block, key, iv);
