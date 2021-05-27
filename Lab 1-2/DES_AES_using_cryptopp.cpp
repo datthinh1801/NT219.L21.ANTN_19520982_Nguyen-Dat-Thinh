@@ -912,25 +912,20 @@ int main(int argc, char *argv[])
 	// Display an example of the algorithm in addition to the estimated time if inputs are valid.
 	wcout << endl;
 	wcout << L"Plaintext: " << wplaintext << endl;
-	wcout << endl;
 
 	wcout << L"Key: ";
 	PrettyPrint(key);
-	wcout << endl;
 
 	if (mode > 1)
 	{
 		wcout << L"IV: ";
 		PrettyPrint(iv);
-		wcout << endl;
 	}
 
 	wcout << L"Ciphertext: ";
 	PrettyPrint(ciphertext);
-	wcout << endl;
 
 	wcout << L"Recovered text: " << s2ws(recoveredtext) << endl;
-	wcout << endl;
 	if (mode == 7 || mode == 8)
 	{
 		wcout << L"Recovered authenticated data: " << s2ws(recovered_auth) << endl;
