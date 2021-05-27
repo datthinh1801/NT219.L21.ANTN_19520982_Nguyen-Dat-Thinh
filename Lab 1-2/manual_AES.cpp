@@ -365,7 +365,9 @@ vector<vector<unsigned char>> KeyExpansion(const vector<vector<unsigned char>> &
         if (i % 4 == 0)
         {
             // temp = SubWord(RotWord(temp)) ^ Rcon[i / 4]
-            temp = SubstituteWord(RotWord(temp));
+            temp = RotWord(temp);
+            temp = SubstituteWord(temp);
+
             for (int j = 0; j < 4; ++j)
             {
                 temp[j].back() ^= round_constants[j][(i / 4) - 1];
@@ -376,6 +378,7 @@ vector<vector<unsigned char>> KeyExpansion(const vector<vector<unsigned char>> &
         for (int j = 0; j < 4; ++j)
         {
             expanded_key[j].push_back(expanded_key[j][i - 4] ^ temp[j].back());
+            temp[j].clear();
         }
     }
 
