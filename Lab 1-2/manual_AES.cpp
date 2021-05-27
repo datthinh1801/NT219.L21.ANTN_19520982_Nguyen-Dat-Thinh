@@ -253,7 +253,7 @@ vector<vector<unsigned char>> &RemovePadding(vector<vector<unsigned char>> &bloc
 // Substitute bytes of the block using the S-box
 // Input is a 16-byte block
 // Output is a 16-byte block
-vector<vector<unsigned char>> &SubstituteByte(vector<vector<unsigned char>> &block)
+vector<vector<unsigned char>> &SubstituteWord(vector<vector<unsigned char>> &block)
 {
     for (int i = 0; i < 4; ++i)
     {
@@ -271,7 +271,7 @@ vector<vector<unsigned char>> &SubstituteByte(vector<vector<unsigned char>> &blo
 // Substitute bytes of the block using the inverse S-box
 // Input is a 16-byte block
 // Output is a 16-byte block
-vector<vector<unsigned char>> &InverseSubstituteByte(vector<vector<unsigned char>> &block)
+vector<vector<unsigned char>> &InverseSubstituteWord(vector<vector<unsigned char>> &block)
 {
     for (int i = 0; i < 4; ++i)
     {
@@ -365,7 +365,7 @@ vector<vector<unsigned char>> KeyExpansion(const vector<vector<unsigned char>> &
         if (i % 4 == 0)
         {
             // temp = SubWord(RotWord(temp)) ^ Rcon[i / 4]
-            temp = SubstituteByte(RotWord(temp));
+            temp = SubstituteWord(RotWord(temp));
             for (int j = 0; j < 4; ++j)
             {
                 temp[j].back() ^= round_constants[j][(i / 4) - 1];
@@ -412,7 +412,7 @@ vector<vector<unsigned char>> Encrypt(string plaintext, const vector<vector<unsi
         for (int round = 1; round <= 10; ++round)
         {
             // [SUB BYTES]
-            current_state = SubstituteByte(current_state);
+            current_state = SubstituteWord(current_state);
 
             // [SHIFT ROWS]
             current_state = ShiftRows(current_state);
@@ -470,7 +470,7 @@ string Decrypt(const vector<vector<unsigned char>> &cipher_block, const vector<v
             // [INVERSE SHIFT ROWS]
             current_state = InverseShiftRows(current_state);
             // [INVERSE SUB BYTES]
-            current_state = InverseSubstituteByte(current_state);
+            current_state = InverseSubstituteWord(current_state);
             // [ADD ROUND KEY]
             auto round_key = Split(expanded_key, round * 4);
             current_state = XOR(current_state, round_key);
