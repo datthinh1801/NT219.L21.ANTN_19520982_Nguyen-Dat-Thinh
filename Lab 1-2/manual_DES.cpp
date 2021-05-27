@@ -244,6 +244,15 @@ void PrintHexString(const string &str)
     wcout << endl;
 }
 
+void PrintHexString(const vector<unsigned char> &block)
+{
+    for (int offset = 0; offset < block.size(); offset += 4)
+    {
+        wcout << hex << uppercase << (unsigned int)ConvertBinToDec(Split(block, offset, 4));
+    }
+    wcout << endl;
+}
+
 // Randomly generate a 64-bit block
 vector<unsigned char> Generate64bitBlockRandomly()
 {
@@ -378,7 +387,7 @@ vector<unsigned char> SubstituteWithSBox(const vector<unsigned char> &block)
         vector<unsigned char> col_block(4);
         for (int i = 0; i < 4; ++i)
         {
-            col_block[i] = block[i + 1];
+            col_block[i] = sub_block[i + 1];
         }
         unsigned char col = ConvertBinToDec(col_block);
 
@@ -492,76 +501,83 @@ vector<unsigned char> &RemovePadding(vector<unsigned char> &block)
     return block;
 }
 
+vector<vector<unsigned char>> ReverseRoundKeys(vector<vector<unsigned char>> &round_keys)
+{
+    vector<vector<unsigned char>> r_round_keys;
+    for (int i = round_keys.size() - 1; i >= 0; --i)
+    {
+        r_round_keys.push_back(round_keys[i]);
+    }
+    return r_round_keys;
+}
+
 // Perform encryption
-string Encrypt(const string &plaintext, const vector<unsigned char> &key, vector<unsigned char> &iv)
+string Encrypt(const string &plain_text, const vector<unsigned char> &key, vector<unsigned char> &iv)
 {
     // Convert the plaintext string to a plaintext block
-    vector<unsigned char> original_plainblock = ConvertStringToBin(plaintext);
+    vector<unsigned char> original_plainblock = ConvertStringToBin(plain_text);
     vector<unsigned char> cipherblock;
     string ciphertext = "";
 
     // Add paddings if necessary
     original_plainblock = AddPadding(original_plainblock);
 
-    vector<unsigned char> permuted_key = PermutedChoice1(key);
-
     // Permuated choice 1 on the key, which yields a 56-bit key
-    permuted_key = PermutedChoice1(key);
+    vector<unsigned char> permuted_key = PermutedChoice1(key);
 
     // Calculate 16 round keys from the 56-bit key
     vector<vector<unsigned char>> round_keys = CalculateRoundKeys(permuted_key);
 
     vector<unsigned char> plainblock;
-    vector<unsigned char> current_block = iv;
+    vector<unsigned char> aux_block = iv;
 
     // Loop through each 64-bit block of the original plainblock
-    for (unsigned char bit : original_plainblock)
+    // for (unsigned char bit : original_plainblock)
+    for (int i = 0; i < original_plainblock.size(); i += 64)
     {
-        plainblock.push_back(bit);
+        // plainblock.push_back(bit);
+        plainblock = Split(original_plainblock, i, 64);
 
-        if (plainblock.size() == 64)
+        // CBC mode
+        plainblock = XOR(plainblock, aux_block);
+
+        /*
+        START OF ENCRYPTION 
+        */
+        // Perform initial permutation on the plain block.
+        // The result is a 64-bit block
+        plainblock = IniatialPermutate(plainblock);
+
+        // Split the plain block into halves with each has 32 bits
+        vector<unsigned char> prev_left_block = Split(plainblock, 0, 32);
+        vector<unsigned char> prev_right_block = Split(plainblock, 32, 32);
+        vector<unsigned char> right_block;
+
+        // 16 rounds of the algorithm
+        for (int i = 0; i < 16; ++i)
         {
-            // CBC mode
-            plainblock = XOR(plainblock, current_block);
+            // Perform the round function on the right block from the previous round
+            right_block = prev_right_block;
+            right_block = RoundFunction(right_block, round_keys[i]);
+            // XOR the resulting block from the round function with the left block from the previous round
+            prev_left_block = XOR(right_block, prev_left_block);
 
-            /*
-            START OF ENCRYPTION 
-            */
-            // Perform initial permutation on the plain block.
-            // The result is a 64-bit block
-            plainblock = IniatialPermutate(plainblock);
-
-            // Split the plain block into halves with each has 32 bits
-            vector<unsigned char> prev_left_block = Split(plainblock, 0, 32);
-            vector<unsigned char> prev_right_block = Split(plainblock, 32, 32);
-            vector<unsigned char> right_block;
-
-            // 16 rounds of the algorithm
-            for (int i = 0; i < 16; ++i)
-            {
-                // Perform the round function on the right block from the previous round
-                right_block = prev_right_block;
-                right_block = RoundFunction(right_block, round_keys[i]);
-                // XOR the resulting block from the round function with the left block from the previous round
-                prev_left_block = XOR(right_block, prev_left_block);
-
-                // Swap the 2 half block for the next round
-                swap(prev_left_block, prev_right_block);
-            }
-
-            // After finishing 16 iterations,
-            // concatenate 2 halves and perform final permutation
-            // R[16]L[16] not L[16]R[16]
-            cipherblock = Concate(prev_right_block, prev_left_block);
-            cipherblock = InverseInitialPermutate(cipherblock);
-            ciphertext += ConvertBinToString(cipherblock);
-            /*
-            END OF ENCRYPTION
-            */
-
-            current_block = cipherblock;
-            plainblock.clear();
+            // Swap the 2 half blocks for the next round
+            swap(prev_left_block, prev_right_block);
         }
+
+        // After finishing 16 iterations,
+        // concatenate 2 halves and perform final permutation
+        // R[16]L[16] not L[16]R[16]
+        cipherblock = Concate(prev_right_block, prev_left_block);
+        cipherblock = InverseInitialPermutate(cipherblock);
+        ciphertext += ConvertBinToString(cipherblock);
+        /*
+            END OF ENCRYPTION
+        */
+
+        aux_block = cipherblock;
+        plainblock.clear();
     }
 
     return ciphertext;
@@ -584,48 +600,45 @@ string Decrypt(const string &ciphertext, const vector<unsigned char> &key, const
     vector<unsigned char> next_block;
 
     // Loop through each 64-bit block of the original cipherblock
-    for (unsigned char bit : original_cipherblock)
+    for (int i = 0; i < original_cipherblock.size(); i += 64)
     {
-        cipherblock.push_back(bit);
+        cipherblock = Split(original_cipherblock, i, 64);
 
-        if (cipherblock.size() == 64)
-        {
-            // CBC mode
-            next_block = cipherblock;
+        // CBC mode
+        next_block = cipherblock;
 
-            /*
+        /*
             START OF DECRYPTION
-            */
-            cipherblock = IniatialPermutate(cipherblock);
-            vector<unsigned char> prev_left_block = Split(cipherblock, 0, 32);
-            vector<unsigned char> prev_right_block = Split(cipherblock, 32, 32);
-            vector<unsigned char> right_block;
+        */
+        cipherblock = IniatialPermutate(cipherblock);
+        vector<unsigned char> prev_left_block = Split(cipherblock, 0, 32);
+        vector<unsigned char> prev_right_block = Split(cipherblock, 32, 32);
+        vector<unsigned char> right_block;
 
-            // 16 rounds of the algorithm
-            for (int i = 15; i >= 0; --i)
-            {
-                // Perform the round function on the right block from the previous round
-                right_block = prev_right_block;
-                right_block = RoundFunction(right_block, round_keys[i]);
-                // XOR the resulting block from the round function with the left block from the previous round
-                prev_left_block = XOR(right_block, prev_left_block);
+        // 16 rounds of the algorithm
+        for (int i = 15; i >= 0; --i)
+        {
+            // Perform the round function on the right block from the previous round
+            right_block = prev_right_block;
+            right_block = RoundFunction(right_block, round_keys[i]);
+            // XOR the resulting block from the round function with the left block from the previous round
+            prev_left_block = XOR(right_block, prev_left_block);
 
-                // Swap the 2 halves for the next round
-                swap(prev_left_block, prev_right_block);
-            }
-
-            plainblock = Concate(prev_right_block, prev_left_block);
-            plainblock = InverseInitialPermutate(plainblock);
-            // CBC mode
-            plainblock = XOR(plainblock, current_block);
-            plaintext += ConvertBinToString(plainblock);
-            /*
-            END OF DECRYPTION
-            */
-
-            current_block = next_block;
-            cipherblock.clear();
+            // Swap the 2 halves for the next round
+            swap(prev_left_block, prev_right_block);
         }
+
+        plainblock = Concate(prev_right_block, prev_left_block);
+        plainblock = InverseInitialPermutate(plainblock);
+        // CBC mode
+        plainblock = XOR(plainblock, current_block);
+        plaintext += ConvertBinToString(plainblock);
+        /*
+            END OF DECRYPTION
+        */
+
+        current_block = next_block;
+        cipherblock.clear();
     }
     return plaintext;
 }
@@ -723,9 +736,9 @@ int main()
     // Report parameters
     wcout << L"Plaintext :" << wplaintext << endl;
     wcout << L"Key: ";
-    PrintHexString(ConvertBinToString(key));
+    PrintHexString(key);
     wcout << L"IV: ";
-    PrintHexString(ConvertBinToString(iv));
+    PrintHexString(iv);
 
     // Perform encryption
     string ciphertext = Encrypt(plaintext, key, iv);
