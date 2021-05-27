@@ -14,7 +14,7 @@
             },
             "linux": {
                 "program": "${fileDirname}\\${fileBasenameNoExtension}",
-                "miDebuggerPath": "/usr/share/gdb",
+                "miDebuggerPath": "/bin/gdb",
             },
             "args": [],
             "stopAtEntry": false,
