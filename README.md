@@ -16,9 +16,9 @@ This repository belongs to my cryptology's schoolwork which relates to the imple
 
 | Scheme | Mode | Average encryption time | Average decryption time |
 |---|---|---|---|
-| DES | ECB | 0.0034 ms | 0.0045 ms |
-| DES | CBC | | |
-| DES | CFB | | |
-| DES | OFB | | |
-| DES | CTR | | |
+| DES | ECB | `0.0036` ms | `0.0035` ms |
+| DES | CBC | `0.0043` ms | `0.0041` ms |
+| DES | CFB | `0.0041` ms | `0.004` ms |
+| DES | OFB | `0.0042` ms | `0.0035` ms |
+| DES | CTR | `0.0042` ms | `0.0042` ms |
 ## Lab 2
