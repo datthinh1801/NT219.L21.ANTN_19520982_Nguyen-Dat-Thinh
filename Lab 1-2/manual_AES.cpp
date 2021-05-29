@@ -2,8 +2,10 @@
 #include <codecvt>
 #include <locale>
 #include <vector>
+#ifdef _WIN32
 #include <io.h>
 #include <fcntl.h>
+#endif
 #include <time.h>
 #include <string>
 #include <iomanip>
@@ -505,8 +507,12 @@ string Decrypt(const vector<vector<unsigned char>> &cipher_block, const vector<v
 // Setup for Vietnamese support
 void SetupVietnameseSupport()
 {
+#ifdef _WIN32
     _setmode(_fileno(stdin), _O_U16TEXT);
     _setmode(_fileno(stdout), _O_U16TEXT);
+#elif __linux__
+    setlocale(LC_ALL, "");
+#endif
 }
 
 // Get a block from console

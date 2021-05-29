@@ -8,8 +8,10 @@
 #include <vector>
 #include <iomanip>
 #include <codecvt>
+#ifdef _WIN32
 #include <io.h>
 #include <fcntl.h>
+#endif
 #include <locale>
 using namespace std;
 
@@ -646,8 +648,12 @@ string Decrypt(const string &ciphertext, const vector<unsigned char> &key, const
 // Setup for Vietnamese support
 void SetupVietnameseSupport()
 {
+#ifdef _WIN32
     _setmode(_fileno(stdin), _O_U16TEXT);
     _setmode(_fileno(stdout), _O_U16TEXT);
+#elif __linux__
+    setlocale(LC_ALL, "");
+#endif
 }
 
 // Get a block from console

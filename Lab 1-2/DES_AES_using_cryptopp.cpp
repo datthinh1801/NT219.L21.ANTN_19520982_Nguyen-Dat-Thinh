@@ -5,8 +5,10 @@
 using CryptoPP::AutoSeededRandomPool;
 
 #include <iostream>
+#ifdef _WIN32
 #include <io.h>
 #include <fcntl.h>
+#endif
 using std::cerr;
 using std::cin;
 using std::cout;
@@ -480,8 +482,12 @@ string GraspAuthenticatedData()
 // Setup for Vietnamese support
 void SetupVietnameseSupport()
 {
+#ifdef _WIN32
 	_setmode(_fileno(stdin), _O_U16TEXT);
 	_setmode(_fileno(stdout), _O_U16TEXT);
+#elif __linux__
+	setlocale(LC_ALL, "");
+#endif
 }
 
 // Select mode of operation
