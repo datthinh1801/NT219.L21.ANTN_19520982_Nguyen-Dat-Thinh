@@ -32,8 +32,8 @@
 | Authenticated data | `19520982` |
 |Number of iteration| `10000` |  
 
-| Scheme | Mode | Average encryption time | Average decryption time |
-|---|---|---|---|
+| Scheme | Mode | Average encryption time (Windows) | Average decryption time (Windows) | Average encryption time (Linux) | Average decryption time (Linux) |
+|---|---|---|---|---|---|
 | AES | ECB | `0.0018` ms | `0.0018` ms | `0.0016519` ms | `0.001711` ms |
 | AES | CBC | `0.0020` ms | `0.0021` ms | `0.0016284` ms | `0.0016791` ms |
 | AES | CFB | `0.0024` ms | `0.0020` ms | `0.0021156` ms | `0.002061` ms |
