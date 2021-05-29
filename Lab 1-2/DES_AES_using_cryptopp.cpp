@@ -474,6 +474,10 @@ string GraspAuthenticatedData()
 	wstring wadata;
 	wcout << L"Authenticated data: ";
 	fflush(stdin);
+#ifdef __linux__
+	getline(wcin, wadata);
+	getline(wcin, wadata);
+#endif
 	getline(wcin, wadata);
 	string adata = ws2s(wadata);
 	return adata;
