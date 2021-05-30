@@ -14,6 +14,26 @@ using std::codecvt_utf8;
 #include <sstream>
 using std::ostringstream;
 
+#include "cryptopp/base64.h"
+using CryptoPP::Base64Encoder;
+
+#include "cryptopp/rsa.h"
+using CryptoPP::RSA;
+
+#include <stdexcept>
+using std::runtime_error;
+
+#include "cryptopp/queue.h"
+using CryptoPP::ByteQueue;
+
+#include "cryptopp/cryptlib.h"
+using CryptoPP::BufferedTransformation;
+using CryptoPP::PrivateKey;
+using CryptoPP::PublicKey;
+
+#include "cryptopp/files.h"
+using CryptoPP::FileSource;
+
 void SetupVietnameseSupport()
 {
 #ifdef __linux__
@@ -129,4 +149,25 @@ void LoadBase64PublicKey(const string &filename, PublicKey &key)
 void LoadBase64(const string &filename, BufferedTransformation &bt)
 {
     throw runtime_error("Not implemented");
+}
+
+void PrintKeys(RSA::PrivateKey &privateKey, RSA::PublicKey &publicKey)
+{
+    wcout << "##### RSA parameters #####" << endl;
+    wcout << "Public modulo n = " << integer_to_wstring(publicKey.GetModulus()) << endl;
+    wcout << "Public key e = " << integer_to_wstring(publicKey.GetPublicExponent()) << endl;
+    wcout << "Private prime number p = " << integer_to_wstring(privateKey.GetPrime1()) << endl;
+    wcout << "Private prime number q = " << integer_to_wstring(privateKey.GetPrime2()) << endl;
+    wcout << "Secret key d = " << integer_to_wstring(privateKey.GetPrivateExponent()) << endl;
+}
+
+char *string_to_ptr_char(string str)
+{
+    char *c = new char[str.size() + 1];
+    for (int i = 0; i < str.size(); ++i)
+    {
+        c[i] = str[i];
+    }
+    c[str.size()] = '\0';
+    return c;
 }
