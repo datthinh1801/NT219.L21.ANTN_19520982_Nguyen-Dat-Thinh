@@ -721,31 +721,60 @@ void GenerateSecByteBlock(SecByteBlock &block, int block_size, wstring which, in
 			block = SecByteBlock(block_size);
 			if (scheme == 1 && which == L"key")
 			{
-				FileSource fs("des_key.key", false);
+#ifdef _WIN32
+				FileSource fs(".\\Lab 1-2\\des_key.key", false);
 				CryptoPP::ArraySink bytes_block(block, block_size);
 				fs.Detach(new Redirector(bytes_block));
 				fs.Pump(block_size);
+#elif __linux__
+				FileSource fs("./Lab 1-2/des_key.key", false);
+				CryptoPP::ArraySink bytes_block(block, block_size);
+				fs.Detach(new Redirector(bytes_block));
+				fs.Pump(block_size);
+
+#endif
 			}
 			else if (scheme == 1 && which == L"IV")
 			{
-				FileSource fs("des_iv.key", false);
+#ifdef _WIN32
+				FileSource fs(".\\Lab 1-2\\des_iv.key", false);
 				CryptoPP::ArraySink bytes_block(block, block_size);
 				fs.Detach(new Redirector(bytes_block));
 				fs.Pump(block_size);
+#elif __linux__
+				FileSource fs("./Lab 1-2/des_iv.key", false);
+				CryptoPP::ArraySink bytes_block(block, block_size);
+				fs.Detach(new Redirector(bytes_block));
+				fs.Pump(block_size);
+#endif
 			}
 			else if (scheme == 2 && which == L"key")
 			{
-				FileSource fs("aes_key.key", false);
+#ifdef _WIN32
+				FileSource fs(".\\Lab 1-2\\aes_key.key", false);
 				CryptoPP::ArraySink bytes_block(block, block_size);
 				fs.Detach(new Redirector(bytes_block));
 				fs.Pump(block_size);
+#elif __linux__
+				FileSource fs("./Lab 1-2/aes_key.key", false);
+				CryptoPP::ArraySink bytes_block(block, block_size);
+				fs.Detach(new Redirector(bytes_block));
+				fs.Pump(block_size);
+#endif
 			}
 			else
 			{
-				FileSource fs("aes_iv.key", false);
+#ifdef _WIN32
+				FileSource fs(".\\Lab 1-2\\aes_iv.key", false);
 				CryptoPP::ArraySink bytes_block(block, block_size);
 				fs.Detach(new Redirector(bytes_block));
 				fs.Pump(block_size);
+#elif __linux__
+				FileSource fs("./Lab 1-2/aes_iv.key", false);
+				CryptoPP::ArraySink bytes_block(block, block_size);
+				fs.Detach(new Redirector(bytes_block));
+				fs.Pump(block_size);
+#endif
 			}
 		}
 		else
@@ -819,11 +848,20 @@ int main(int argc, char *argv[])
 			iv_size = DES::BLOCKSIZE;
 			GenerateSecByteBlock(iv, iv_size, L"IV", scheme);
 
-			// Write IV to file
-			StringSource ss_iv(iv, iv.size(), true, new FileSink("des_iv.key"));
+// Write IV to file
+#ifdef _WIN32
+			StringSource ss_iv(iv, iv.size(), true, new FileSink(".\\Lab 1-2\\des_iv.key"));
+#elif __linux__
+			StringSource ss_iv(iv, iv.size(), true, new FileSink("./Lab 1-2/des_iv.key"));
+#endif
 		}
-		// Write key to file
-		StringSource ss_key(key, key.size(), true, new FileSink("des_key.key"));
+
+// Write key to file
+#ifdef _WIN32
+		StringSource ss_key(key, key.size(), true, new FileSink(".\\Lab 1-2\\des_key.key"));
+#elif __linux__
+		StringSource ss_key(key, key.size(), true, new FileSink("./Lab 1-2/des_key.key"));
+#endif
 
 		// Decide on the mode
 		switch (mode)
@@ -878,11 +916,20 @@ int main(int argc, char *argv[])
 			GenerateSecByteBlock(iv, iv_size, L"IV", scheme);
 
 			// Write IV to file
-			StringSource ss_iv(iv, iv.size(), true, new FileSink("aes_iv.key"));
+#ifdef _WIN32
+			StringSource ss_iv(iv, iv.size(), true, new FileSink(".\\Lab 1-2\\aes_iv.key"));
+#elif __linux__
+
+			StringSource ss_iv(iv, iv.size(), true, new FileSink("./Lab 1-2/aes_iv.key"));
+#endif
 		}
 
-		// Write key to file
-		StringSource ss_key(key, key.size(), true, new FileSink("aes_key.key"));
+// Write key to file
+#ifdef _WIN32
+		StringSource ss_key(key, key.size(), true, new FileSink(".\\Lab 1-2\\aes_key.key"));
+#elif __linux__
+		StringSource ss_key(key, key.size(), true, new FileSink("./Lab 1-2/aes_key.key"));
+#endif
 
 		// Decide on the mode
 		switch (mode)
