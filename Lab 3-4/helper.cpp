@@ -4,7 +4,14 @@
 #endif
 
 #include <iostream>
+using std::endl;
+using std::wcin;
+using std::wcout;
+
+#include <fstream>
 #include <string>
+using std::string;
+using std::wstring;
 #include <locale>
 using std::wstring_convert;
 
@@ -182,4 +189,25 @@ CryptoPP::Integer ReadIntegerFromConsole(wstring string_holder)
     CryptoPP::Integer num(c);
     delete[] c;
     return num;
+}
+
+string ReadPlaintextFromFile(string filename)
+{
+    std::ifstream in_file;
+    in_file.open(filename);
+    if (!in_file.is_open())
+    {
+        wcout << L"Không thể mở file!" << endl;
+        exit(1);
+    }
+
+    string data;
+    string line;
+    while (in_file.good())
+    {
+        getline(in_file, line);
+        data += line;
+    }
+    in_file.close();
+    return data;
 }
