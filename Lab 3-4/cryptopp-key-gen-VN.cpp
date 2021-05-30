@@ -50,76 +50,41 @@ using CryptoPP::PublicKey;
 #include "cryptopp/osrng.h"
 using CryptoPP::AutoSeededRandomPool;
 
-/* Vietnamese support */
-
-/* Set _setmode()*/
-#ifdef _WIN32
-#include <io.h>
-#include <fcntl.h>
-#endif
-
-/* String convert */
-#include <locale>
-using std::wstring_convert;
-#include <codecvt>
-using std::codecvt_utf8;
-
-/* Integer convert */
-#include <sstream>
-using std::ostringstream;
-
-/* Vietnames convert function def*/
-wstring string_to_wstring(const std::string &str);
-string wstring_to_string(const std::wstring &str);
-wstring integer_to_wstring(const CryptoPP::Integer &t);
-
-void SavePrivateKey(const string &filename, const PrivateKey &key);
-void SavePublicKey(const string &filename, const PublicKey &key);
-
-void SaveBase64PrivateKey(const string &filename, const PrivateKey &key);
-void SaveBase64PublicKey(const string &filename, const PublicKey &key);
-
-void SaveBase64(const string &filename, const BufferedTransformation &bt);
-void Save(const string &filename, const BufferedTransformation &bt);
-
-void LoadPrivateKey(const string &filename, PrivateKey &key);
-void LoadPublicKey(const string &filename, PublicKey &key);
-
-void LoadBase64PrivateKey(const string &filename, PrivateKey &key);
-void LoadBase64PublicKey(const string &filename, PublicKey &key);
-
-void LoadBase64(const string &filename, BufferedTransformation &bt);
-void Load(const string &filename, BufferedTransformation &bt);
+#include "helper.cpp"
 
 int main(int argc, char **argv)
 {
-/*Set mode support Vietnamese*/
-#ifdef __linux__
-	setlocale(LC_ALL, "");
-#elif _WIN32
-	_setmode(_fileno(stdin), _O_U16TEXT);
-	_setmode(_fileno(stdout), _O_U16TEXT);
-#else
-#endif
+	SetupVietnameseSupport();
 	AutoSeededRandomPool rnd;
 
 	try
 	{
+		// Generate private key
 		RSA::PrivateKey rsaPrivate;
-		rsaPrivate.GenerateRandomWithKeySize(rnd, 2048);
+		rsaPrivate.GenerateRandomWithKeySize(rnd, 4096);
+
+		// Generate public key deriving from the private key
 		RSA::PublicKey rsaPublic(rsaPrivate);
-		SavePrivateKey("rsa-private.key", rsaPrivate);
-		SavePublicKey("rsa-public.key", rsaPublic);
+
+// Save keys to files
+#ifdef _WIN32
+		SavePrivateKey(".\\Lab 3-4\\rsa-private.key", rsaPrivate);
+		SavePublicKey(".\\Lab 3-4\\rsa-public.key", rsaPublic);
+#elif __linux__
+		SavePrivateKey("./Lab 3-4/rsa-private.key", rsaPrivate);
+		SavePublicKey("./Lab 3-4/rsa-public.key", rsaPublic);
+#endif
+
 		/* Pretty print n,p,q,e,d */
 		std::wstring test;
 		wcout << L"Test Tiếng Việt" << endl;
 		wcout << L"Input message:";
 		getline(wcin, test);
 		wcout << test << endl;
-		wcout << "Modunlo  n= " << integer_to_wstring(rsaPublic.GetModulus()) << endl;
-		wcout << "Public key  e= " << integer_to_wstring(rsaPublic.GetPublicExponent()) << endl;
-		wcout << "Private prime number  p= " << integer_to_wstring(rsaPrivate.GetPrime1()) << endl;
-		wcout << "Private prime number  q= " << integer_to_wstring(rsaPrivate.GetPrime2()) << endl;
+		wcout << "Modulo - n = " << integer_to_wstring(rsaPublic.GetModulus()) << endl;
+		wcout << "Public key - e = " << integer_to_wstring(rsaPublic.GetPublicExponent()) << endl;
+		wcout << "Private prime number - p = " << integer_to_wstring(rsaPrivate.GetPrime1()) << endl;
+		wcout << "Private prime number - q = " << integer_to_wstring(rsaPrivate.GetPrime2()) << endl;
 		wcout << "Private key  d= " << integer_to_wstring(rsaPrivate.GetPrivateExponent()) << endl;
 		////////////////////////////////////////////////////////////////////////////////////
 		/* Check the keys */
@@ -138,16 +103,26 @@ int main(int argc, char **argv)
 		DSA::PublicKey dsaPublic;
 		dsaPrivate.MakePublicKey(dsaPublic);
 
-		SavePrivateKey("dsa-private.key", dsaPrivate);
-		SavePublicKey("dsa-public.key", dsaPublic);
+#ifdef _WIN32
+		SavePrivateKey(".\\Lab 3-4\\dsa-private.key", dsaPrivate);
+		SavePublicKey(".\\Lab 3-4\\dsa-public.key", dsaPublic);
+#elif __linux__
+		SavePrivateKey("./Lab 3-4/dsa-private.key", dsaPrivate);
+		SavePublicKey("./Lab 3-4/dsa-public.key", dsaPublic);
+#endif
 
 		////////////////////////////////////////////////////////////////////////////////////
 
 		RSA::PrivateKey r1, r2;
 		r1.GenerateRandomWithKeySize(rnd, 3072);
 
-		SavePrivateKey("rsa-roundtrip.key", r1);
-		LoadPrivateKey("rsa-roundtrip.key", r2);
+#ifdef _WIN32
+		SavePrivateKey(".\\Lab 3-4\\rsa-roundtrip.key", r1);
+		LoadPrivateKey(".\\Lab 3-4\\rsa-roundtrip.key", r2);
+#elif __linux__
+		SavePrivateKey("./Lab 3-4/rsa-roundtrip.key", r1);
+		LoadPrivateKey("./Lab 3-4/rsa-roundtrip.key", r2);
+#endif
 
 		r1.Validate(rnd, 3);
 		r2.Validate(rnd, 3);
@@ -177,112 +152,4 @@ int main(int argc, char **argv)
 	}
 
 	return 0;
-}
-
-void SavePrivateKey(const string &filename, const PrivateKey &key)
-{
-	ByteQueue queue;
-	key.Save(queue);
-	Save(filename, queue);
-}
-
-void SavePublicKey(const string &filename, const PublicKey &key)
-{
-	ByteQueue queue;
-	key.Save(queue);
-	Save(filename, queue);
-}
-
-void Save(const string &filename, const BufferedTransformation &bt)
-{
-	FileSink file(filename.c_str());
-	bt.CopyTo(file);
-	file.MessageEnd();
-}
-
-void SaveBase64PrivateKey(const string &filename, const PrivateKey &key)
-{
-	ByteQueue queue;
-	key.Save(queue);
-	SaveBase64(filename, queue);
-}
-
-void SaveBase64PublicKey(const string &filename, const PublicKey &key)
-{
-	ByteQueue queue;
-	key.Save(queue);
-	SaveBase64(filename, queue);
-}
-
-void SaveBase64(const string &filename, const BufferedTransformation &bt)
-{
-	// http://www.cryptopp.com/docs/ref/class_base64_encoder.html
-	Base64Encoder encoder;
-	bt.CopyTo(encoder);
-	encoder.MessageEnd();
-	Save(filename, encoder);
-}
-
-void LoadPrivateKey(const string &filename, PrivateKey &key)
-{
-	ByteQueue queue;
-	Load(filename, queue);
-	key.Load(queue);
-}
-
-void LoadPublicKey(const string &filename, PublicKey &key)
-{
-
-	ByteQueue queue;
-	Load(filename, queue);
-	key.Load(queue);
-}
-
-void Load(const string &filename, BufferedTransformation &bt)
-{
-
-	FileSource file(filename.c_str(), true /*pumpAll*/);
-	file.TransferTo(bt);
-	bt.MessageEnd();
-}
-
-void LoadBase64PrivateKey(const string &filename, PrivateKey &key)
-{
-	throw runtime_error("Not implemented");
-}
-
-void LoadBase64PublicKey(const string &filename, PublicKey &key)
-{
-	throw runtime_error("Not implemented");
-}
-
-void LoadBase64(const string &filename, BufferedTransformation &bt)
-{
-	throw runtime_error("Not implemented");
-}
-
-/* Convert interger to wstring */
-wstring integer_to_wstring(const CryptoPP::Integer &t)
-{
-	std::ostringstream oss;
-	oss.str("");
-	oss.clear();
-	oss << t;						// pumb t to oss
-	std::string encoded(oss.str()); // to string
-	std::wstring_convert<codecvt_utf8<wchar_t>> towstring;
-	return towstring.from_bytes(encoded); // string to wstring
-}
-
-/* convert string to wstring */
-wstring string_to_wstring(const std::string &str)
-{
-	wstring_convert<codecvt_utf8<wchar_t>> towstring;
-	return towstring.from_bytes(str);
-}
-
-/* convert wstring to string */
-string wstring_to_string(const std::wstring &str)
-{
-	wstring_convert<codecvt_utf8<wchar_t>> tostring;
-	return tostring.to_bytes(str);
 }
