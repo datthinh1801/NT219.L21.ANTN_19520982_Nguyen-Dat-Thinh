@@ -171,3 +171,15 @@ char *string_to_ptr_char(string str)
     c[str.size()] = '\0';
     return c;
 }
+
+CryptoPP::Integer ReadIntegerFromConsole(wstring string_holder)
+{
+    wstring wstr_input;
+    wcout << string_holder + L": ";
+    fflush(stdin);
+    getline(wcin, wstr_input);
+    char *c = string_to_ptr_char(wstring_to_string(wstr_input));
+    CryptoPP::Integer num(c);
+    delete[] c;
+    return num;
+}
