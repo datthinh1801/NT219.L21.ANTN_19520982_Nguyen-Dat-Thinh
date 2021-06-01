@@ -39,6 +39,7 @@ using CryptoPP::PrivateKey;
 using CryptoPP::PublicKey;
 
 #include "cryptopp/files.h"
+using CryptoPP::FileSink;
 using CryptoPP::FileSource;
 
 void SetupVietnameseSupport()
