@@ -44,8 +44,6 @@ using CryptoPP::Base64Encoder;
 
 #include <cryptopp/cryptlib.h>
 using CryptoPP::BufferedTransformation;
-using CryptoPP::PrivateKey;
-using CryptoPP::PublicKey;
 
 #include "cryptopp/osrng.h"
 using CryptoPP::AutoSeededRandomPool;
@@ -61,7 +59,7 @@ int main(int argc, char **argv)
 	{
 		// Generate private key
 		RSA::PrivateKey rsaPrivate;
-		rsaPrivate.GenerateRandomWithKeySize(rnd, 4096);
+		rsaPrivate.GenerateRandomWithKeySize(rnd, 3072);
 
 		// Generate public key deriving from the private key
 		RSA::PublicKey rsaPublic(rsaPrivate);
@@ -75,17 +73,7 @@ int main(int argc, char **argv)
 		SavePublicKey("./Lab 3-4/rsa-public.key", rsaPublic);
 #endif
 
-		/* Pretty print n,p,q,e,d */
-		std::wstring test;
-		wcout << L"Test Tiếng Việt" << endl;
-		wcout << L"Input message:";
-		getline(wcin, test);
-		wcout << test << endl;
-		wcout << "Modulo - n = " << integer_to_wstring(rsaPublic.GetModulus()) << endl;
-		wcout << "Public key - e = " << integer_to_wstring(rsaPublic.GetPublicExponent()) << endl;
-		wcout << "Private prime number - p = " << integer_to_wstring(rsaPrivate.GetPrime1()) << endl;
-		wcout << "Private prime number - q = " << integer_to_wstring(rsaPrivate.GetPrime2()) << endl;
-		wcout << "Private key  d= " << integer_to_wstring(rsaPrivate.GetPrivateExponent()) << endl;
+		PrintKeys(rsaPrivate, rsaPublic);
 		////////////////////////////////////////////////////////////////////////////////////
 		/* Check the keys */
 		CryptoPP::Integer n, p, q, e, d;
