@@ -191,6 +191,7 @@ void ShowMainMenu()
     wcout << L"Bạn muốn làm gì?" << endl;
     wcout << L"(1) Encrypt" << endl;
     wcout << L"(2) Decrypt" << endl;
+    wcout << L"(3) Computation on Zp" << endl;
     wcout << L"> ";
 }
 
@@ -359,6 +360,26 @@ void Decrypt()
 
 void PerformZpComputation()
 {
+    Integer x = ReadIntegerFromConsole(L"x");
+    Integer y = ReadIntegerFromConsole(L"y");
+    Integer z = ReadIntegerFromConsole(L"z");
+    Integer result;
+
+    wcout << "x + y = ";
+    result = x + y;
+    wcout << integer_to_wstring(result) << endl;
+
+    wcout << "x - y = ";
+    result = x - y;
+    wcout << integer_to_wstring(result) << endl;
+
+    wcout << "(x * y) mod z = ";
+    result = a_times_b_mod_c(x, y, z);
+    wcout << integer_to_wstring(result) << endl;
+
+    wcout << "(x ^ y) mod z = ";
+    result = a_exp_b_mod_c(x, y, z);
+    wcout << integer_to_wstring(result) << endl;
 }
 
 int main(int argc, char *argv[])
@@ -386,6 +407,9 @@ int main(int argc, char *argv[])
             break;
         case 2:
             Decrypt();
+            break;
+        case 3:
+            PerformZpComputation();
             break;
         default:
             wcout << L"Lựa chọn không hợp lệ!" << endl;
