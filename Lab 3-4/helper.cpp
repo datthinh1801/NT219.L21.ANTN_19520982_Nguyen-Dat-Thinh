@@ -199,6 +199,7 @@ CryptoPP::Integer ReadIntegerFromConsole(wstring string_holder)
 
 string ReadPlaintextFromFile(string filename)
 {
+    std::locale loc(std::locale(), new codecvt_utf8<wchar_t>);
     std::wifstream in_file;
     in_file.open(filename);
     if (!in_file.is_open())
@@ -207,6 +208,7 @@ string ReadPlaintextFromFile(string filename)
         exit(1);
     }
 
+    in_file.imbue(loc);
     wstring data;
     wstring line;
     while (in_file.good())
