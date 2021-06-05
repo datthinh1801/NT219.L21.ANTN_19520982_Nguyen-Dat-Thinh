@@ -163,10 +163,15 @@ void PrintKeys(RSA::PrivateKey &privateKey, RSA::PublicKey &publicKey)
 {
     wcout << "##### RSA parameters #####" << endl;
     wcout << "Public modulo n = " << integer_to_wstring(publicKey.GetModulus()) << endl;
+    wcout << endl;
     wcout << "Private prime number p = " << integer_to_wstring(privateKey.GetPrime1()) << endl;
+    wcout << endl;
     wcout << "Private prime number q = " << integer_to_wstring(privateKey.GetPrime2()) << endl;
+    wcout << endl;
     wcout << "Public key e = " << integer_to_wstring(publicKey.GetPublicExponent()) << endl;
+    wcout << endl;
     wcout << "Secret key d = " << integer_to_wstring(privateKey.GetPrivateExponent()) << endl;
+    wcout << endl;
 }
 
 char *string_to_ptr_char(string str)
@@ -193,6 +198,28 @@ CryptoPP::Integer ReadIntegerFromConsole(wstring string_holder)
 }
 
 string ReadPlaintextFromFile(string filename)
+{
+    std::wifstream in_file;
+    in_file.open(filename);
+    if (!in_file.is_open())
+    {
+        wcout << L"Không thể mở file!" << endl;
+        exit(1);
+    }
+
+    wstring data;
+    wstring line;
+    while (in_file.good())
+    {
+        getline(in_file, line);
+        data += line;
+    }
+    in_file.close();
+    wcout << "Plaintext: " << data << endl;
+    return wstring_to_string(data);
+}
+
+string ReadCiphertextFromFile(string filename)
 {
     std::ifstream in_file;
     in_file.open(filename);
