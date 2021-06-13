@@ -1,12 +1,10 @@
 #include <iostream>
 #include <string>
+#include <fstream>
 using namespace std;
 
 #include "cryptopp/osrng.h"
 using CryptoPP::AutoSeededRandomPool;
-
-#include "cryptopp/aes.h"
-using CryptoPP::AES;
 
 #include "cryptopp/integer.h"
 using CryptoPP::Integer;
@@ -130,89 +128,165 @@ void LoadPublicKey(const string &filename, ECDSA<ECP, SHA256>::PublicKey &key)
 }
 
 // Sign the message using the private key and store the signature to "signature"
-bool SignMessage(const ECDSA<ECP, SHA256>::PrivateKey &key, const string &message, string &signature)
+bool SignMessage(string privatekey_filename, string message_filename, string &signature)
 {
+    // Load private key from file
+    ECDSA<ECP, SHA256>::PrivateKey privateKey;
+    LoadPrivateKey(privatekey_filename, privateKey);
+
+    // Read message from file
+    string message = ReadPlaintextFromFile(message_filename);
+
+    // Sign message using the above private key
     AutoSeededRandomPool prng;
     signature.erase();
     StringSource(message, true,
                  new SignerFilter(prng,
-                                  ECDSA<ECP, SHA256>::Signer(key),
-                                  new StringSink(signature)) // SignerFilter
-    );                                                       // StringSource
+                                  ECDSA<ECP, SHA256>::Signer(privateKey),
+                                  new StringSink(signature)));
     return !signature.empty();
 }
 
 // Verify the signature of the message using the public key
-bool VerifyMessage(const ECDSA<ECP, SHA256>::PublicKey &key, const string &message, const string &signature)
+bool VerifyMessage(string publickey_filename, string message_filename, const string &signature)
 {
+    // Load public key from file
+    ECDSA<ECP, SHA256>::PublicKey publicKey;
+    LoadPublicKey(publickey_filename, publicKey);
+
+    // Read message from file
+    string message = ReadPlaintextFromFile(message_filename);
+
+    // Verify message using the above public key
     bool result = false;
     StringSource(signature + message, true,
                  new SignatureVerificationFilter(
-                     ECDSA<ECP, SHA256>::Verifier(key),
-                     new ArraySink((CryptoPP::byte *)&result, sizeof(result))) // SignatureVerificationFilter
-    );
+                     ECDSA<ECP, SHA256>::Verifier(publicKey),
+                     new ArraySink((CryptoPP::byte *)&result, sizeof(result))));
     return result;
+}
+
+// Generate private key and public key, then write them to files
+bool GenerateKeyPair(const OID &oid, string privateKey_filename, string publicKey_filename)
+{
+    // Private and Public keys
+    ECDSA<ECP, SHA256>::PrivateKey privateKey;
+    ECDSA<ECP, SHA256>::PublicKey publicKey;
+
+    if (!GeneratePrivateKey(oid, privateKey) || !GeneratePublicKey(privateKey, publicKey))
+    {
+        return false;
+    }
+
+    // Save the key pair to files
+    SavePrivateKey(privateKey_filename, privateKey);
+    SavePublicKey(publicKey_filename, publicKey);
+    return true;
+}
+
+void WriteSignatureToFile(string filename, const string &signature)
+{
+    ofstream fout(filename);
+    if (fout.is_open())
+    {
+        fout << signature;
+        fout.close();
+    }
+    else
+    {
+        wcout << "Cannot open file " << string_to_wstring(filename) << "!" << endl;
+        exit(1);
+    }
+}
+
+void ReadSignatureFromFile(string filename, string &signature)
+{
+    ifstream fin(filename);
+    if (fin.is_open())
+    {
+        fin >> signature;
+        fin.close();
+    }
+    else
+    {
+        wcout << "Cannot open file " << string_to_wstring(filename) << "!" << endl;
+        exit(1);
+    }
 }
 
 int main(int argc, char *argv[])
 {
     SetupVietnameseSupport();
+    string sep;
+#ifdef _WIN32
+    sep = '\\';
+#elif __linux__
+    sep = '/';
+#endif
 
-    // Scratch result
-    bool result = false;
+    wcout << "What do you want to do?" << endl;
+    wcout << "[1] Generate keys and write them to files." << endl;
+    wcout << "[2] Sign a message from message.txt." << endl;
+    wcout << "[3] Verify the signature." << endl;
+    wcout << "> ";
 
-    // Private and Public keys
-    ECDSA<ECP, SHA256>::PrivateKey privateKey;
-    ECDSA<ECP, SHA256>::PublicKey publicKey;
-
-    // Generate Keys
-    if (!GeneratePrivateKey(CryptoPP::ASN1::secp256r1(), privateKey))
+    int option;
+    try
     {
-        wcout << "Cannot generate the private key!" << endl;
+        wcin >> option;
+    }
+    catch (exception e)
+    {
+        wcout << "Exception on selection: " << e.what() << endl;
         exit(1);
     }
 
-    if (!GeneratePublicKey(privateKey, publicKey))
-    {
-        wcout << "Cannot generate the public key!" << endl;
-        exit(1);
-    }
-
-    // Print Domain Parameters and Keys
-    PrintDomainParameters(publicKey);
-    PrintPrivateKey(privateKey);
-    PrintPublicKey(publicKey);
-
-    // Save key in PKCS#9 and X.509 format
-    SavePrivateKey(".\\Lab 3-4\\ec.private.key", privateKey);
-    SavePublicKey(".\\Lab 3-4\\ec.public.key", publicKey);
-
-    // Load key in PKCS#9 and X.509 format
-    LoadPrivateKey(".\\Lab 3-4\\ec.private.key", privateKey);
-    LoadPublicKey(".\\Lab 3-4\\ec.public.key", publicKey);
-
-    // Print Domain Parameters and Keys
-    PrintDomainParameters(publicKey);
-    PrintPrivateKey(privateKey);
-    PrintPublicKey(publicKey);
-
-    // Read message from file
-    string message = ReadPlaintextFromFile(".\\Lab 3-4\\message.txt");
-
-    // Sign and Verify a message
+    string publickey_filename = "." + sep + "Lab 3-4" + sep + "ec.public.key";
+    string privatekey_filename = "." + sep + "Lab 3-4" + sep + "ec.private.key";
+    string message_filename = "." + sep + "Lab 3-4" + sep + "message.txt";
+    string signature_filename = "." + sep + "Lab 3-4" + sep + "signature.txt";
     string signature;
 
-    if (!SignMessage(privateKey, message, signature))
+    switch (option)
     {
-        cout << "Failed to sign the message!" << endl;
-    }
-    else if (!VerifyMessage(publicKey, message, signature))
-    {
-        cout << "Failed to verify the message!" << endl;
-    }
-    else
-    {
-        cout << "All is good!" << endl;
+    case 1:
+        if (!GenerateKeyPair(CryptoPP::ASN1::secp256r1(), privatekey_filename, publickey_filename))
+        {
+            wcout << "Failed to generate key pair!" << endl;
+            exit(1);
+        }
+        else
+        {
+            wcout << "Keys are written to " << string_to_wstring(privatekey_filename) << " and " << string_to_wstring(publickey_filename);
+        }
+        break;
+    case 2:
+        if (!SignMessage(privatekey_filename, message_filename, signature))
+        {
+            wcout << "Failed to sign the message!" << endl;
+            exit(1);
+        }
+        else
+        {
+            WriteSignatureToFile(signature_filename, signature);
+            wcout << "Sign the message successfully!" << endl;
+        }
+        break;
+    case 3:
+        ReadSignatureFromFile(signature_filename, signature);
+        if (!VerifyMessage(publickey_filename, message_filename, signature))
+        {
+            cout << "Failed to verify the message!" << endl;
+            exit(1);
+        }
+        else
+        {
+            wcout << "Verify the message successfully!" << endl;
+        }
+        break;
+    default:
+        wcout << "Invalid option!" << endl;
+        exit(1);
     }
 
     return 0;
