@@ -1,5 +1,3 @@
-// Sample.cpp
-
 #include "cryptopp/rsa.h"
 using CryptoPP::InvertibleRSAFunction;
 using CryptoPP::RSA;
@@ -59,6 +57,7 @@ using std::wcout;
 
 #include <assert.h>
 #include "helper.cpp"
+using namespace helper;
 
 string RSA_Encrypt(AutoSeededRandomPool &rng, const RSA::PublicKey &rsaPublicKey, const string &plaintext)
 {
