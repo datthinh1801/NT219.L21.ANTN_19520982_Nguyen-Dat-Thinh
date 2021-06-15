@@ -10,4 +10,4 @@
 ### ECDSA
 | Signing time (ms) | Verifying time (ms) |
 |---|---|
-| 0.7378 | 
+| 0.7378 | 1.8446 |
