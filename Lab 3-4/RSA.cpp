@@ -59,6 +59,8 @@ using std::wcout;
 #include "helper.cpp"
 using namespace helper;
 
+#define N_ITER 10000
+
 string RSA_Encrypt(AutoSeededRandomPool &rng, const RSA::PublicKey &rsaPublicKey, const string &plaintext)
 {
     string ciphertext;
@@ -297,11 +299,19 @@ void Encrypt()
 
     // Encryption
     string ciphertext;
-    ciphertext = RSA_Encrypt(rng, publicKey, plaintext);
+    double etime = 0;
+    for (int i = 0; i < N_ITER; ++i)
+    {
+        int start = clock();
+        ciphertext = RSA_Encrypt(rng, publicKey, plaintext);
+        int end = clock();
+        etime += double(end - start) / CLOCKS_PER_SEC;
+    }
 
     wcout << "Ciphertext: ";
     PrettyPrint(ciphertext);
     wcout << endl;
+    wcout << "Average encryption time: " << 1000 * etime / N_ITER << " ms." << endl;
 }
 
 void Decrypt()
@@ -353,8 +363,18 @@ void Decrypt()
     }
 
     // Decryption
-    string recovered_text = RSA_Decrypt(rng, privateKey, ciphertext);
-    wcout << "Recover text: " << string_to_wstring(recovered_text) << endl;
+    string recovered_text;
+    double etime = 0;
+    for (int i = 0; i < N_ITER; ++i)
+    {
+        int start = clock();
+        recovered_text = RSA_Decrypt(rng, privateKey, ciphertext);
+        int end = clock();
+        etime += double(end - start) / CLOCKS_PER_SEC;
+    }
+
+    wcout << "Recovered text: " << string_to_wstring(recovered_text) << endl;
+    wcout << "Average decryption time: " << 1000 * etime / N_ITER << " ms." << endl;
 }
 
 void PerformZpComputation()

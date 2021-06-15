@@ -31,12 +31,17 @@ using CryptoPP::ECP;
 #include "cryptopp/oids.h"
 using CryptoPP::OID;
 
+#include "cryptopp/hex.h"
+using CryptoPP::HexEncoder;
+
 #include "helper.cpp"
 using helper::integer_to_wstring;
 using helper::ReadPlaintextFromFile;
 using helper::SetupVietnameseSupport;
 using helper::string_to_wstring;
 using helper::wstring_to_string;
+
+#define N_ITER 10000
 
 // Generate the private key from a given curve via OID
 bool GeneratePrivateKey(const OID &oid, ECDSA<ECP, SHA256>::PrivateKey &key)
@@ -52,6 +57,38 @@ bool GeneratePublicKey(const ECDSA<ECP, SHA256>::PrivateKey &privateKey, ECDSA<E
     AutoSeededRandomPool prng;
     privateKey.MakePublicKey(publicKey);
     return publicKey.Validate(prng, 3);
+}
+
+void ReadSignatureFromFile(string filename, string &signature)
+{
+    ifstream fin(filename);
+    if (fin.is_open())
+    {
+        string line;
+        while (fin.good())
+        {
+            getline(fin, line);
+            signature += line;
+        }
+        fin.close();
+    }
+    else
+    {
+        wcout << "Cannot open file " << string_to_wstring(filename) << "!" << endl;
+        exit(1);
+    }
+}
+
+void PrettyPrint(string str)
+{
+    // Convert byte string to a hex wstring,
+    // and print to console.
+    string encoded_string;
+    StringSource(str, true,
+                 new HexEncoder(
+                     new StringSink(encoded_string)));
+    wstring wstr = string_to_wstring(encoded_string);
+    wcout << wstr << endl;
 }
 
 void PrintDomainParameters(const DL_GroupParameters_EC<ECP> &params)
@@ -97,10 +134,16 @@ void PrintPrivateKey(const ECDSA<ECP, SHA256>::PrivateKey &key)
 // Print the public element to console
 void PrintPublicKey(const ECDSA<ECP, SHA256>::PublicKey &key)
 {
-    wcout << endl;
     wcout << "Public Element:" << endl;
     wcout << " X: " << integer_to_wstring(key.GetPublicElement().x) << endl;
     wcout << " Y: " << integer_to_wstring(key.GetPublicElement().y) << endl;
+}
+
+void PrintKeys(const ECDSA<ECP, SHA256>::PrivateKey &privateKey, const ECDSA<ECP, SHA256>::PublicKey &publicKey)
+{
+    PrintDomainParameters(privateKey);
+    PrintPrivateKey(privateKey);
+    PrintPublicKey(publicKey);
 }
 
 // Save the private key (in binary) to file
@@ -127,9 +170,23 @@ void LoadPublicKey(const string &filename, ECDSA<ECP, SHA256>::PublicKey &key)
     key.Load(FileSource(filename.c_str(), true /*pump all*/).Ref());
 }
 
-// Sign the message using the private key and store the signature to "signature"
-bool SignMessage(string privatekey_filename, string message_filename, string &signature)
+string SignMessage(const ECDSA<ECP, SHA256>::PrivateKey &privateKey, const string &message)
 {
+    AutoSeededRandomPool prng;
+    string signature;
+    signature.erase();
+
+    StringSource(message, true,
+                 new SignerFilter(prng,
+                                  ECDSA<ECP, SHA256>::Signer(privateKey),
+                                  new StringSink(signature)));
+    return signature;
+}
+
+// Sign the message using the private key and store the signature to "signature"
+void SignMessageSetup(string privatekey_filename, string message_filename, string &signature)
+{
+
     // Load private key from file
     ECDSA<ECP, SHA256>::PrivateKey privateKey;
     LoadPrivateKey(privatekey_filename, privateKey);
@@ -137,26 +194,30 @@ bool SignMessage(string privatekey_filename, string message_filename, string &si
     // Read message from file
     string message = ReadPlaintextFromFile(message_filename);
 
-    // Sign message using the above private key
-    AutoSeededRandomPool prng;
-    signature.erase();
-    StringSource(message, true,
-                 new SignerFilter(prng,
-                                  ECDSA<ECP, SHA256>::Signer(privateKey),
-                                  new StringSink(signature)));
-    return !signature.empty();
+    double etime = 0;
+
+    for (int i = 0; i < N_ITER; ++i)
+    {
+        int start = clock();
+        signature = SignMessage(privateKey, message);
+        if (signature.empty())
+        {
+            wcout << "Failed to sign message!" << endl;
+            exit(1);
+        }
+        int end = clock();
+        etime += double(end - start) / CLOCKS_PER_SEC;
+    }
+
+    PrintDomainParameters(privateKey);
+    PrintPrivateKey(privateKey);
+    wcout << "Signature: ";
+    PrettyPrint(signature);
+    wcout << "Average signing time: " << 1000 * etime / N_ITER << " ms." << endl;
 }
 
-// Verify the signature of the message using the public key
-bool VerifyMessage(string publickey_filename, string message_filename, const string &signature)
+bool VerifyMessage(const ECDSA<ECP, SHA256>::PublicKey &publicKey, const string &message, const string &signature)
 {
-    // Load public key from file
-    ECDSA<ECP, SHA256>::PublicKey publicKey;
-    LoadPublicKey(publickey_filename, publicKey);
-
-    // Read message from file
-    string message = ReadPlaintextFromFile(message_filename);
-
     // Verify message using the above public key
     bool result = false;
     StringSource(signature + message, true,
@@ -164,6 +225,39 @@ bool VerifyMessage(string publickey_filename, string message_filename, const str
                      ECDSA<ECP, SHA256>::Verifier(publicKey),
                      new ArraySink((CryptoPP::byte *)&result, sizeof(result))));
     return result;
+}
+
+// Verify the signature of the message using the public key
+void VerifyMessageSetup(string publickey_filename, string message_filename, string signature_filename)
+{
+    // Load public key from file
+    ECDSA<ECP, SHA256>::PublicKey publicKey;
+    LoadPublicKey(publickey_filename, publicKey);
+
+    string signature;
+    ReadSignatureFromFile(signature_filename, signature);
+
+    // Read message from file
+    string message = ReadPlaintextFromFile(message_filename);
+
+    double etime = 0;
+    for (int i = 0; i < N_ITER; ++i)
+    {
+        int start = clock();
+        if (!VerifyMessage(publicKey, message, signature))
+        {
+            wcout << "Failed to verify message!" << endl;
+            exit(1);
+        }
+        int end = clock();
+        etime += double(end - start) / CLOCKS_PER_SEC;
+    }
+
+    PrintDomainParameters(publicKey);
+    PrintPublicKey(publicKey);
+    wcout << "Signature: ";
+    PrettyPrint(signature);
+    wcout << "Average verifying time: " << 1000 * etime / N_ITER << " ms." << endl;
 }
 
 // Generate private key and public key, then write them to files
@@ -178,6 +272,8 @@ bool GenerateKeyPair(const OID &oid, string privateKey_filename, string publicKe
         return false;
     }
 
+    PrintKeys(privateKey, publicKey);
+
     // Save the key pair to files
     SavePrivateKey(privateKey_filename, privateKey);
     SavePublicKey(publicKey_filename, publicKey);
@@ -191,21 +287,6 @@ void WriteSignatureToFile(string filename, const string &signature)
     {
         fout << signature;
         fout.close();
-    }
-    else
-    {
-        wcout << "Cannot open file " << string_to_wstring(filename) << "!" << endl;
-        exit(1);
-    }
-}
-
-void ReadSignatureFromFile(string filename, string &signature)
-{
-    ifstream fin(filename);
-    if (fin.is_open())
-    {
-        fin >> signature;
-        fin.close();
     }
     else
     {
@@ -261,28 +342,13 @@ int main(int argc, char *argv[])
         }
         break;
     case 2:
-        if (!SignMessage(privatekey_filename, message_filename, signature))
-        {
-            wcout << "Failed to sign the message!" << endl;
-            exit(1);
-        }
-        else
-        {
-            WriteSignatureToFile(signature_filename, signature);
-            wcout << "Sign the message successfully!" << endl;
-        }
+        SignMessageSetup(privatekey_filename, message_filename, signature);
+        WriteSignatureToFile(signature_filename, signature);
+        wcout << "Sign the message successfully!" << endl;
         break;
     case 3:
-        ReadSignatureFromFile(signature_filename, signature);
-        if (!VerifyMessage(publickey_filename, message_filename, signature))
-        {
-            cout << "Failed to verify the message!" << endl;
-            exit(1);
-        }
-        else
-        {
-            wcout << "Verify the message successfully!" << endl;
-        }
+        VerifyMessageSetup(publickey_filename, message_filename, signature_filename);
+        wcout << "Verify the message successfully!" << endl;
         break;
     default:
         wcout << "Invalid option!" << endl;
