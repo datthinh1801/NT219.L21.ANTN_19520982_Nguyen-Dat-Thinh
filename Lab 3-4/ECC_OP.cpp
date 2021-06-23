@@ -109,6 +109,6 @@ int main(int argc, char *argv[])
 
     /* Compute on ECC curve  y^2 = x^3 +ax +b*/
     ECP::Point I = eqcurve256r1.Add(G, H);
-    cout << "Hx=" << I.x << endl;
-    cout << "Hy=" << I.y << endl;
+    cout << "Ix = " << I.x << endl;
+    cout << "Iy = " << I.y << endl;
 }
