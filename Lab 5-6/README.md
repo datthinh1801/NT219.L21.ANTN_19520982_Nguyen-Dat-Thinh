@@ -238,7 +238,7 @@ My original executable file `program` has the size of `16928` bytes.
 -rwxrwxrwx 1 datthinh datthinh   16928 Jun 23 16:57 program
 ```  
 
-So I need to extract `16928 - 12544 = 4384` bytes from the original executable file and append these bytes to the collision files.  
+So I need to extract the last `16928 - 12544 = 4384` bytes from the original executable file and append these bytes to the collision files.  
 ```
 # extract the suffix
 tail -c 4384 program > suffix
