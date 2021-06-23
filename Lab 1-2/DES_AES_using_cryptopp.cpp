@@ -106,8 +106,8 @@ void PrettyPrint(SecByteBlock byte_block)
 	// and print to console
 	string encoded_string;
 	StringSource(byte_block, byte_block.size(), true,
-				 new HexEncoder(
-					 new StringSink(encoded_string)));
+		     new HexEncoder(
+			 new StringSink(encoded_string)));
 	wstring wstr = s2ws(encoded_string);
 	wcout << wstr << endl;
 }
@@ -119,8 +119,8 @@ void PrettyPrint(CryptoPP::byte *bytes_array)
 	// and print to console
 	string encoded_string;
 	StringSource(bytes_array, sizeof(bytes_array), true,
-				 new HexEncoder(
-					 new StringSink(encoded_string)));
+		     new HexEncoder(
+			 new StringSink(encoded_string)));
 	wstring wstr = s2ws(encoded_string);
 	wcout << wstr << endl;
 }
@@ -132,8 +132,8 @@ void PrettyPrint(string str)
 	// and print to console.
 	string encoded_string;
 	StringSource(str, true,
-				 new HexEncoder(
-					 new StringSink(encoded_string)));
+		     new HexEncoder(
+			 new StringSink(encoded_string)));
 	wstring wstr = s2ws(encoded_string);
 	wcout << wstr << endl;
 }
@@ -154,7 +154,7 @@ void Encrypt(const string &plain, Mode &e, string &cipher)
 	try
 	{
 		StringSource(plain, true,
-					 new StreamTransformationFilter(e, new StringSink(cipher)));
+			     new StreamTransformationFilter(e, new StringSink(cipher)));
 	}
 	catch (const CryptoPP::Exception &ex)
 	{
@@ -179,8 +179,8 @@ void Decrypt(const string &cipher, Mode &d, string &recovered)
 	try
 	{
 		StringSource(cipher, true,
-					 new StreamTransformationFilter(d,
-													new StringSink(recovered)));
+			     new StreamTransformationFilter(d,
+							    new StringSink(recovered)));
 	}
 	catch (const CryptoPP::Exception &ex)
 	{
@@ -375,7 +375,7 @@ double *Encrypt_Decrypt_withAuthentication(const SecByteBlock &key, const SecByt
 		enc.SpecifyDataLengths(auth.size(), plaintext.size(), 0);
 
 		AuthenticatedEncryptionFilter ef(enc,
-										 new StringSink(ciphertext), false, TAG_SIZE);
+						 new StringSink(ciphertext), false, TAG_SIZE);
 
 		// Put authenticated data to the authenticated channel which only provides authentication
 		ef.ChannelPut(AAD_CHANNEL, (const CryptoPP::byte *)auth.data(), auth.size());
@@ -410,9 +410,9 @@ double *Encrypt_Decrypt_withAuthentication(const SecByteBlock &key, const SecByt
 		dec.SpecifyDataLengths(recovered_auth.size(), encrypted_data.size(), 0);
 
 		AuthenticatedDecryptionFilter df(dec, NULL,
-										 AuthenticatedDecryptionFilter::MAC_AT_BEGIN |
-											 AuthenticatedDecryptionFilter::THROW_EXCEPTION,
-										 TAG_SIZE);
+						 AuthenticatedDecryptionFilter::MAC_AT_BEGIN |
+						     AuthenticatedDecryptionFilter::THROW_EXCEPTION,
+						 TAG_SIZE);
 
 		df.ChannelPut(DEFAULT_CHANNEL, (const CryptoPP::byte *)mac.data(), mac.size());
 		df.ChannelPut(AAD_CHANNEL, (const CryptoPP::byte *)auth.data(), auth.size());
@@ -990,12 +990,12 @@ int main(int argc, char *argv[])
 	wcout << "--------------------------------------------------" << endl;
 
 	wcout << L"Tổng thời gian mã hóa trong 10000 vòng: " << etime[0] << " ms" << endl;
-	wcout << L"Thời gian mã hóa trung bình của mỗi vòng: " << etime[0] / 10000 << " ms" << endl;
+	wcout << L"Thời gian mã hóa trung bình của mỗi vòng: " << etime[0] / N_ITER << " ms" << endl;
 
 	wcout << endl;
 
 	wcout << L"Tổng thời gian giải mã trong 10000 vòng: " << etime[1] << " ms" << endl;
-	wcout << L"Thời gian giải mã trung bình của mỗi vòng: " << etime[1] / 10000 << " ms" << endl;
+	wcout << L"Thời gian giải mã trung bình của mỗi vòng: " << etime[1] / N_ITER << " ms" << endl;
 
 	delete[] etime;
 
