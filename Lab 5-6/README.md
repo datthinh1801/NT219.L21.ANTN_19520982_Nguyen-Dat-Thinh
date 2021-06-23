@@ -281,6 +281,6 @@ Their outputs seem identical. So I'll check with `diff`.
 └─$ diff program1 program2
 Binary files program1 and program2 differ
 ```  
-
+> These 2 programs are different but having the same MD5 hash. COLLISION 💥
 
 
