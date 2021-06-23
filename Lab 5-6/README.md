@@ -95,11 +95,8 @@ Compare the two out files.
 
 The 2 files have the same prefix but different suffix. Now compute their hashes:  
 ```
-└─$ md5sum out1.bin
+└─$ md5sum out1.bin out2.bin
 145222bca98e8d0aa596e244a490bf69  out1.bin
-```
-```
-└─$ md5sum out2.bin
 145222bca98e8d0aa596e244a490bf69  out2.bin
 ```  
 > Their hashes are the same! COLLISION 💥  
