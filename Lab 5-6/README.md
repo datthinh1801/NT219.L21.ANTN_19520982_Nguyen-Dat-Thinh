@@ -11,18 +11,18 @@
 | message | `Nguyễn Đạt Thịnh - 19520982` |
 
 ## Performance
-| Hash function | Average execution time (ms) |
-|---|---|
-| SHA224 | `0.0005` |
-| SHA256 | `0.0004` |
-| SHA384 | `0.0006` |
-| SHA512 | `0.0005` |
-| SHA3-224 | `0.0007` |
-| SHA3-256 | `0.0009` |
-| SHA3-384 | `0.0006` |
-| SHA3-512 | `0.0009` |
-| SHAKE128 *(with digest size = 32 bytes)* | `0.0006` |
-| SHAKE256 *(with digest size = 32 bytes)* | `0.0007` |  
+| Hash function | Average execution time on Windows (ms) | Average execution time on Linux (ms) |
+|---|---|---|
+| SHA224 | `0.0005` | `0.0008872` |
+| SHA256 | `0.0004` | `0.0009016` |
+| SHA384 | `0.0006` | `0.0009678` |
+| SHA512 | `0.0005` | `0.000964` |
+| SHA3-224 | `0.0007` | `0.0010582` |
+| SHA3-256 | `0.0009` | `0.0010926` |
+| SHA3-384 | `0.0006` | `0.0010705` |
+| SHA3-512 | `0.0009` | `0.0011068` |
+| SHAKE128 *(with digest size = 32 bytes)* | `0.0006` | `0.0010564` |
+| SHAKE256 *(with digest size = 32 bytes)* | `0.0007` | `0.0010667` |
 
 # Lab 6 - MD5 Collision attack
 ## Task 1: Generate 2 different files with the same MD5 hash
