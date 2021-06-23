@@ -164,9 +164,14 @@ The idea behind this attack is as follows:
 First, I separate the executable file into 3 parts.  
 - The first part, called the **prefix**, starts at the beginning of the file to somewhere in the middle of the array `xyz`. In this case, I truncate the first `0x3070` bytes of the executable file, which is up to the first 16 `A` characters of the array.  
 - The second part, in which I will find a hash collision on, is a portion of the array.  
-- The last part, called the **suffix**, continues at the remaining portion of the array `xyz` to the end of the file.
+- The last part, called the **suffix**, continues at the remaining portion of the array `xyz` to the end of the file.  
+
+Second, I find a collision with that **prefix**.  
+
+Third, I append the remaining part (the **suffix**) of the original file to the 2 new files having collision.
 
 #### Truncate the prefix
+I will truncate the original file up to `0x3070` bytes which also cuts the first 16 bytes of the array `xyz`.  
 As `0x3070` is equivalent to `12400` bytes. The following command will truncate `12400` bytes of the executable file and store these bytes to the file called `prefix`.  
 ```
 head -c 12400 program > prefix
@@ -219,7 +224,7 @@ Let's see there MD5 hashes.
 1a2aa7a8215eb20f7a5b426f1e2a95fc  coll_prefix_1
 1a2aa7a8215eb20f7a5b426f1e2a95fc  coll_prefix_2
 ```  
-> There hashes are identical!  
+> Their hashes are identical!  
 
 #### Append the suffix to the collision
 So far, I already have 2 md5hash-identical executable files whose sizes are `12544` bytes.  
@@ -233,7 +238,7 @@ My original executable file `program` has the size of `16928` bytes.
 -rwxrwxrwx 1 datthinh datthinh   16928 Jun 23 16:57 program
 ```  
 
-So I need to extract `16928 - 12544 = 4384` bytes from the original executalbe file and append these bytes to the collision files.  
+So I need to extract `16928 - 12544 = 4384` bytes from the original executable file and append these bytes to the collision files.  
 ```
 # extract the suffix
 tail -c 4384 program > suffix
