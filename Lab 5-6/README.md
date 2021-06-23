@@ -1,4 +1,5 @@
-# Performance report
+# Lab 5 - Hash Functions
+## Performance report
 ### Hardware specifications
 | Hardware | Specification |
 | --- | --- |
@@ -21,4 +22,7 @@
 | SHA3-384 | `0.0006` |
 | SHA3-512 | `0.0009` |
 | SHAKE128 *(with digest size = 32 bytes)* | `0.0006` |
-| SHAKE256 *(with digest size = 32 bytes)* | `0.0007` |
+| SHAKE256 *(with digest size = 32 bytes)* | `0.0007` |  
+
+# Lab 6 - MD5 Collision attack
+
