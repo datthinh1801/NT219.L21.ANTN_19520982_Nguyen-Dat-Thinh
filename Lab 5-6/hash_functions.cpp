@@ -133,15 +133,15 @@ string AcquireMessage()
 {
     int option = SelectMessageSource();
 
-    char sep;
+    string sep;
 #ifdef _WIN32
-    sep = '\\';
+    sep = "\\";
 #elif __linux__
-    sep = '/'
+    sep = "/"
 #endif
 
-    string filename = '.' + sep + "Lab 5-6" + sep;
-    filename += "plaintext.txt";
+    string filename = "." + sep + "Lab 5-6" + sep;
+    filename += "message.txt";
 
     switch (option)
     {
