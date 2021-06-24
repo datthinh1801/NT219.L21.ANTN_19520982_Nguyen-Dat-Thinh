@@ -267,6 +267,13 @@ c24d50132e27dc7020ec80c158093fb2  program2
 ```
 > Identical!  
 
+Let I check their different-ness with `diff`.  
+```
+└─$ diff program1 program2
+Binary files program1 and program2 differ
+```  
+> These files are different!
+
 Let's execute them to see if their behavior is the same.  
 ```
 └─$ ./program1
@@ -275,12 +282,7 @@ Let's execute them to see if their behavior is the same.
 └─$ ./program2
 41414141414141414141414141414141000000000000000044c880848f841d6f77684c219baf625174caa55845882a61667922e5966e992ddacbe04cf6c8ebfc3f4b7fdac5beab044401aa8645f53d9faf168e1abe5dc9f4c6df2d21ca625ac715709457edbaeeb285714bded2ae5b217ca77456e5dc0fa15eb33cfc7c268f93185b48effeb90a39b4ebf33ea79fa167eec23ce141414141414141414141414141414141414141414141414141414141414141414141414141414141
 ```
-
-Their outputs seem identical. So I'll check with `diff`.  
-```
-└─$ diff program1 program2
-Binary files program1 and program2 differ
-```  
-> These 2 programs are different but having the same MD5 hash. COLLISION 💥
+Their outputs are slightly different.  
+> So these 2 programs are different but having the same MD5 hash. COLLISION 💥
 
 
