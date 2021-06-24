@@ -218,7 +218,7 @@ These files seem identical but they are indeed different.
 Binary files coll_prefix_1 and coll_prefix_2 differ
 ```  
 
-Let's see there MD5 hashes.  
+Let's see their MD5 hashes.  
 ```
 └─$ md5sum coll_prefix_1 coll_prefix_2
 1a2aa7a8215eb20f7a5b426f1e2a95fc  coll_prefix_1
