@@ -337,8 +337,8 @@ Run `hashclash` tool to make these 2 executable files collide.
 When the tool is done, we have 2 files with an extension `.coll`.  
 ```
 └─$ ls -l say_hello.coll say_hi.coll
--rwxrwxrwx 1 datthinh datthinh 17088 Jul  1 06:02 say_hello.coll
--rwxrwxrwx 1 datthinh datthinh 17088 Jul  1 06:02 say_hi.coll
+-rwxrwxrwx 1 datthinh datthinh 17088 Jun  23 18:02 say_hello.coll
+-rwxrwxrwx 1 datthinh datthinh 17088 Jun  23 18:02 say_hi.coll
 ```  
 
 Let's execute them.  
