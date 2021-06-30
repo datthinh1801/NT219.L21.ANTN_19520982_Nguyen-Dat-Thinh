@@ -1,0 +1,5 @@
+Nguyen Dat Thinh
+19520982
+ANTN2019
+
+Lab 6: MD5 collision attack
