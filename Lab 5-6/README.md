@@ -355,6 +355,6 @@ They still act as our original programs, but this time, let's compare their md5 
 75aa2ceb33367c14812be9c97f3a44b9  say_hello.coll
 75aa2ceb33367c14812be9c97f3a44b9  say_hi.coll
 ```  
-> Their hashes new are identical. So we are done.
+> Their hashes new are identical. COLLISION 💥
 
 
