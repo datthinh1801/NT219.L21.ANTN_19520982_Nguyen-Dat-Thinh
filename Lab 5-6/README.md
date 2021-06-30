@@ -283,6 +283,78 @@ Let's execute them to see if their behavior is the same.
 41414141414141414141414141414141000000000000000044c880848f841d6f77684c219baf625174caa55845882a61667922e5966e992ddacbe04cf6c8ebfc3f4b7fdac5beab044401aa8645f53d9faf168e1abe5dc9f4c6df2d21ca625ac715709457edbaeeb285714bded2ae5b217ca77456e5dc0fa15eb33cfc7c268f93185b48effeb90a39b4ebf33ea79fa167eec23ce141414141414141414141414141414141414141414141414141414141414141414141414141414141
 ```
 Their outputs are slightly different.  
-> So these 2 programs are different but having the same MD5 hash. COLLISION 💥
+> So these 2 programs are different but having the same MD5 hash. COLLISION 💥  
+
+## Task 3: Chosen-prefix collisions attack
+First source code:  
+```c
+// say_hi.c
+#include <stdio.h>
+int main()
+{
+        printf("Hi");
+}
+```  
+
+Second source code:  
+```c
+// say_hello.c
+#include <stdio.h>
+int main()
+{
+        printf("Hello");
+}
+```  
+
+Compile the two source codes and check their md5 hashes.  
+```
+└─$ gcc say_hi.c -o say_hi
+└─$ gcc say_hello.c -o say_hello
+```  
+
+Let's execute these files.  
+```
+└─$ ./say_hi
+Hi
+└─$ ./say_hello
+Hello
+```  
+> Their behaviors are completely different.  
+
+Let's compare their hashes.  
+```
+└─$ md5sum say_hi say_hello
+05ad29fc8e10e98158c6e5713f34cc56  say_hi
+dfa85087656480d1d6891c24c6af7885  say_hello
+```  
+> Their md5 hashes are different.  
+
+Run `hashclash` tool to make these 2 executable files collide.  
+```
+└─$ ./../cpc.sh ./say_hi ./say_hello
+```  
+
+When the tool is done, we have 2 files with an extension `.coll`.  
+```
+└─$ ls -l say_hello.coll say_hi.coll
+-rwxrwxrwx 1 datthinh datthinh 17088 Jul  1 06:02 say_hello.coll
+-rwxrwxrwx 1 datthinh datthinh 17088 Jul  1 06:02 say_hi.coll
+```  
+
+Let's execute them.  
+```
+└─$ ./say_hello.coll
+Hello
+└─$ ./say_hi.coll
+Hi
+```  
+
+They still act as our original programs, but this time, let's compare their md5 hashes.  
+```
+└─$ md5sum say_hello.coll say_hi.coll
+75aa2ceb33367c14812be9c97f3a44b9  say_hello.coll
+75aa2ceb33367c14812be9c97f3a44b9  say_hi.coll
+```  
+> Their hashes new are identical. So we are done.
 
 
