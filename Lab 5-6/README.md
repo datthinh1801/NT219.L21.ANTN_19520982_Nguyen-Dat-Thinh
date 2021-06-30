@@ -66,14 +66,14 @@ Compare the two out files.
 00000010: 0a31 3935 3230 3938 320a 414e 544e 3230  .19520982.ANTN20
 00000020: 3139 0a0a 4c61 6220 363a 204d 4435 2063  19..Lab 6: MD5 c
 00000030: 6f6c 6c69 7369 6f6e 2061 7474 6163 6b0a  ollision attack.
-00000040: d910 bf82 fd62 e883 5880 a71c 69ba 6827  .....b..X...i.h'
-00000050: 90d0 547a fc9d 7829 4e06 404e 6f20 8d09  ..Tz..x)N.@No ..
-00000060: d0e5 aecc d04c e8c5 6f10 d992 d7ab f21a  .....L..o.......
-00000070: 832d c665 cf24 0592 9819 025a 1858 4d7b  .-.e.$.....Z.XM{
-00000080: fb59 fede 1028 272a 8124 9db7 a171 443f  .Y...('*.$...qD?
-00000090: 5e67 844e 14ba e059 cdbb f6c4 5922 591e  ^g.N...Y....Y"Y.
-000000a0: 4f33 d6f9 2bd9 8682 cb68 c1cf 8496 6bca  O3..+....h....k.
-000000b0: c2c4 ab8d d87d aa33 bed6 645b b3e9 cf4b  .....}.3..d[...K
+00000040: 1b5c b015 8d4f d77f 77c8 62a2 12dd 72ad  .\...O..w.b...r.
+00000050: 4d2d 5276 006c 1504 62d2 4056 6ef8 a30a  M-Rv.l..b.@Vn...
+00000060: bfdc cac6 58f4 13fe 4b4a 61a3 c98d 5764  ....X...KJa...Wd
+00000070: 5e04 e667 7cc5 ae67 0686 8581 4ebc da8f  ^..g|..g....N...
+00000080: 634f 79ce 13ff 41b3 cd1b 4d4d 376c 7e99  cOy...A...MM7l~.
+00000090: 9ed6 f14a 1676 8121 c957 f8c4 591a 5d32  ...J.v.!.W..Y.]2
+000000a0: 895f d7f9 39f6 8270 ab47 cc0f cb51 76a6  ._..9..p.G...Qv.
+000000b0: dd73 c835 4488 dbeb 394e 1d5b 5ef1 721f  .s.5D...9N.[^.r.
 ```
 
 `out2.bin`:  
@@ -83,21 +83,21 @@ Compare the two out files.
 00000010: 0a31 3935 3230 3938 320a 414e 544e 3230  .19520982.ANTN20
 00000020: 3139 0a0a 4c61 6220 363a 204d 4435 2063  19..Lab 6: MD5 c
 00000030: 6f6c 6c69 7369 6f6e 2061 7474 6163 6b0a  ollision attack.
-00000040: d910 bf82 fd62 e883 5880 a71c 69ba 6827  .....b..X...i.h'
-00000050: 90d0 54fa fc9d 7829 4e06 404e 6f20 8d09  ..T...x)N.@No ..
-00000060: d0e5 aecc d04c e8c5 6f10 d992 d72b f31a  .....L..o....+..
-00000070: 832d c665 cf24 0592 9819 02da 1858 4d7b  .-.e.$.......XM{
-00000080: fb59 fede 1028 272a 8124 9db7 a171 443f  .Y...('*.$...qD?
-00000090: 5e67 84ce 14ba e059 cdbb f6c4 5922 591e  ^g.....Y....Y"Y.
-000000a0: 4f33 d6f9 2bd9 8682 cb68 c1cf 8416 6bca  O3..+....h....k.
-000000b0: c2c4 ab8d d87d aa33 bed6 64db b3e9 cf4b  .....}.3..d....K
+00000040: 1b5c b015 8d4f d77f 77c8 62a2 12dd 72ad  .\...O..w.b...r.
+00000050: 4d2d 52f6 006c 1504 62d2 4056 6ef8 a30a  M-R..l..b.@Vn...
+00000060: bfdc cac6 58f4 13fe 4b4a 61a3 c90d 5864  ....X...KJa...Xd
+00000070: 5e04 e667 7cc5 ae67 0686 8501 4ebc da8f  ^..g|..g....N...
+00000080: 634f 79ce 13ff 41b3 cd1b 4d4d 376c 7e99  cOy...A...MM7l~.
+00000090: 9ed6 f1ca 1676 8121 c957 f8c4 591a 5d32  .....v.!.W..Y.]2
+000000a0: 895f d7f9 39f6 8270 ab47 cc0f cbd1 75a6  ._..9..p.G....u.
+000000b0: dd73 c835 4488 dbeb 394e 1ddb 5ef1 721f  .s.5D...9N..^.r.
 ```  
 
 The 2 files have the same prefix but different suffix. Now compute their hashes:  
 ```
 └─$ md5sum out1.bin out2.bin
-145222bca98e8d0aa596e244a490bf69  out1.bin
-145222bca98e8d0aa596e244a490bf69  out2.bin
+7394eb7949b776f98bdece091c18fff1  out1.bin
+7394eb7949b776f98bdece091c18fff1  out2.bin
 ```  
 > Their hashes are the same! COLLISION 💥  
 
